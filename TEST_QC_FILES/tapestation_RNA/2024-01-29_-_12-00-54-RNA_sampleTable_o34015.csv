@@ -1,0 +1,56 @@
+Well,RINe,28S/18S (Area),Conc. [ng/µl],Sample Description,Alert,Observations
+EL1,,,84.9,Electronic Ladder,,Ladder
+A1,5.5,0.1,56.2,34015/1#1,,The upper ribosomal fragment has degraded
+B1,5.8,0.2,53.5,34015/1#2,,The upper ribosomal fragment has degraded
+C1,5.2,,49.9,34015/1#3,,The upper ribosomal fragment has degraded
+D1,5.9,0.2,42.0,34015/1#4,,The upper ribosomal fragment has degraded
+E1,5.5,0.2,28.0,34015/1#5,,The upper ribosomal fragment has degraded
+F1,6.0,0.1,32.2,34015/1#6,,The upper ribosomal fragment has degraded
+G1,5.4,0.1,31.9,34015/1#7,,The upper ribosomal fragment has degraded
+H1,4.0,0.6,47.7,34015/1#8,,The upper ribosomal fragment has degraded
+A2,3.9,0.4,89.2,34015/1#9,,The upper ribosomal fragment has degraded
+B2,4.3,0.8,31.4,34015/1#10,,The upper ribosomal fragment has degraded
+C2,4.9,0.7,134,34015/1#11,,
+D2,4.1,0.4,103,34015/1#12,,The upper ribosomal fragment has degraded
+E2,3.9,0.4,34.3,34015/1#13,,The upper ribosomal fragment has degraded
+F2,4.3,0.3,33.1,34015/1#14,,The upper ribosomal fragment has degraded
+G2,5.3,0.4,48.6,34015/1#15,,
+H2,5.6,0.7,27.9,34015/1#16,,
+A3,6.1,0.4,33.5,34015/1#17,,
+B3,3.0,,25.6,34015/1#18,,The upper ribosomal fragment has degraded
+C3,3.1,,33.3,34015/1#19,,The upper ribosomal fragment has degraded
+D3,2.6,,26.1,34015/1#20,,The upper ribosomal fragment has degraded
+E3,4.2,,29.2,34015/1#21,,The upper ribosomal fragment has degraded
+F3,5.5,,29.5,34015/1#22,,The upper ribosomal fragment has degraded
+G3,5.0,,24.4,34015/1#23,!,Sample concentration outside functional range for RINe and the assay; The upper ribosomal fragment has degraded
+H3,6.4,0.1,74.6,34015/1#24,,The upper ribosomal fragment has degraded
+A4,5.9,,31.1,34015/1#25,,The upper ribosomal fragment has degraded
+B4,5.6,,19.8,34015/1#26,!,Sample concentration outside functional range for RINe and the assay; The upper ribosomal fragment has degraded
+C4,5.8,0.2,26.1,34015/1#27,,The upper ribosomal fragment has degraded
+D4,5.9,,19.0,34015/1#28,!,Sample concentration outside functional range for RINe and the assay; The upper ribosomal fragment has degraded
+E4,6.5,0.2,39.1,34015/1#29,,The upper ribosomal fragment has degraded
+F4,4.8,,20.5,34015/1#30,!,Sample concentration outside functional range for RINe and the assay; The upper ribosomal fragment has degraded
+G4,5.7,,16.0,34015/1#31,!,Sample concentration outside functional range for RINe and the assay; The upper ribosomal fragment has degraded
+H4,5.9,0.2,30.5,34015/1#32,,The upper ribosomal fragment has degraded
+A5,4.8,,27.8,34015/1#33,,The upper ribosomal fragment has degraded
+B5,2.2,,37.8,34015/1#34,,The upper ribosomal fragment has degraded
+C5,4.8,0.3,36.6,34015/1#35,,The upper ribosomal fragment has degraded
+D5,3.7,,35.1,34015/1#36,,The upper ribosomal fragment has degraded
+E5,5.0,1.0,37.3,34015/1#37,,
+F5,5.9,0.5,43.7,34015/1#38,,
+G5,2.9,,39.5,34015/1#39,,The upper ribosomal fragment has degraded
+H5,5.5,0.8,33.3,34015/1#40,,
+A6,5.3,0.8,32.6,34015/1#41,,
+B6,4.3,0.2,35.9,34015/1#42,,The upper ribosomal fragment has degraded
+C6,4.9,0.7,33.4,34015/1#43,,
+D6,6.0,0.3,36.8,34015/1#44,,The upper ribosomal fragment has degraded
+E6,4.9,,20.2,34015/1#45,!,Sample concentration outside functional range for RINe and the assay; The upper ribosomal fragment has degraded
+F6,5.7,0.5,39.2,34015/1#46,,The upper ribosomal fragment has degraded
+G6,4.9,0.6,27.6,34015/1#47,,The upper ribosomal fragment has degraded
+H6,6.0,0.4,24.8,34015/1#48,!,Sample concentration outside functional range for RINe and the assay; The upper ribosomal fragment has degraded
+A7,6.8,0.6,61.1,34015/1#49,,
+B7,7.9,0.8,23.0,34015/1#50,!,Sample concentration outside functional range for RINe and the assay
+C7,4.6,0.3,34.2,34015/1#51,,The upper ribosomal fragment has degraded
+D7,5.3,0.3,28.8,34015/1#52,,The upper ribosomal fragment has degraded
+E7,3.2,,36.8,34015/1#53,,The upper ribosomal fragment has degraded
+F7,6.2,1.1,36.4,34015/1#54,,
