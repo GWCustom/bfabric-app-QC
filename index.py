@@ -1,10 +1,14 @@
 from dash import Input, Output, State, html, dcc
 import dash_bootstrap_components as dbc
 import dash
+import dash_table
 import json
 import os
+from dash import callback_context as ctx
+from objects.QCDataset import QC_Dataset as QC
 # import bfabric
 from utils import auth_utils, components
+from utils.upload_utils import parse_contents as pc
 
 if os.path.exists("./PARAMS.py"):
     try:
@@ -51,7 +55,7 @@ app.layout = html.Div(
                                 html.Div(
                                     children=[
                                         html.P(
-                                            'B-Fabric App Template',
+                                            'QC Upload App',
                                             style={'color':'#ffffff','margin-top':'15px','height':'80px','width':'100%',"font-size":"40px","margin-left":"20px"}
                                         )
                                     ],
@@ -62,45 +66,204 @@ app.layout = html.Div(
                     ),
                 ),
                 dbc.Row(
-                    dbc.Col(
+                    dbc.Col([
                         html.Div(
-                            children=[html.P(id="page-title",children=[str("Bfabric App Template")], style={"font-size":"40px", "margin-left":"20px", "margin-top":"10px"})],
+                            children=[html.P(id="page-title",children=[str("QC Upload App")], style={"font-size":"40px", "margin-left":"20px", "margin-top":"10px"})],
                             style={"margin-top":"0px", "min-height":"80px","height":"6vh","border-bottom":"2px solid #d4d7d9"}
-                        )
-                    )
-                ),
-                dbc.Row(
-                    id="page-content-main",
-                    children=[
-                        dbc.Col(
-                            html.Div(
-                                id="sidebar",
-                                children=components.default_sidebar,
-                                style={"border-right": "2px solid #d4d7d9", "height": "100%", "padding": "20px", "font-size": "20px"}
-                            ),
-                            width=3,
                         ),
-                        dbc.Col(
-                            html.Div(
-                                id="page-content",
-                                children=components.no_auth + [html.Div(id="auth-div")],style={"margin-top":"20vh", "margin-left":"2vw", "font-size":"20px"},
-                            ),
-                            width=9,
-                        ),
-                    ],
-                    style={"margin-top": "0px", "min-height": "40vh"}
+                        dcc.Loading([    
+                            html.Div([    
+                                dbc.Alert(
+                                    children=[],
+                                    id="alert-n-samples",
+                                    dismissable=True,
+                                    is_open=False,
+                                    color="warning",
+                                    style={"max-width":"80vw", "margin":"10px"}
+                                ),
+                                dbc.Alert(
+                                    children=[], 
+                                    id="alert-upload-error",
+                                    dismissable=True,
+                                    is_open=False,
+                                    color="danger",
+                                    style={"max-width":"80vw", "margin":"10px"}
+                                ),
+                                dbc.Alert(
+                                    children=[],
+                                    id="alert-upload-success",
+                                    dismissable=True,
+                                    is_open=False,
+                                    color="success",
+                                    style={"max-width":"80vw", "margin":"10px"}
+                                ),
+                                dbc.Alert(
+                                    children=[],
+                                    id="alert-merge-error",
+                                    dismissable=True,
+                                    is_open=False,
+                                    color="danger",
+                                    style={"max-width":"80vw", "margin":"10px"}
+                                ),
+                            ]),
+                        ]),
+                    ])
                 ),
+                # dbc.Row(
+                #     id="page-content-main",
+                    # children=[
+                    #     dbc.Col(
+                    #         html.Div(
+                    #             id="sidebar",
+                    #             children=components.default_sidebar,
+                    #             style={"border-right": "2px solid #d4d7d9", "height": "100%", "padding": "20px", "font-size": "20px"}
+                    #         ),
+                    #         width=3,
+                    #     ),
+                    #     dbc.Col(
+                    #         html.Div(
+                    #             id="page-content",
+                    #             children=components.no_auth + [html.Div(id="auth-div")],
+                    #             style={
+                    #                 "margin-top":"2vh", 
+                    #                 "margin-left":"2vw", 
+                    #                 "font-size":"20px",
+                    #                 "max-height":"80%",
+                    #                 "overflow-y":"scroll",
+                    #                 "margin-bottom":"2vh"
+                    #             },
+                    #         ),
+                    #         width=9,
+                    #     ),
+                    # ],
+                #     style={"margin-top": "0px", "min-height": "40vh"}
+                # ),
+                components.tabs,
             ], style={"width":"100vw"},  
             fluid=True
         ),
         dcc.Store(id='token', storage_type='session'), # Where we store the actual token
         dcc.Store(id='entity', storage_type='session'), # Where we store the entity data retrieved from bfabric
         dcc.Store(id='token_data', storage_type='session'), # Where we store the token auth response
+        dcc.Store(id='qc-data', storage_type='session'),
+        components.modal_submit,
     ],style={"width":"100vw", "overflow-x":"hidden", "overflow-y":"scroll"}
 )
 
+@app.callback(
+    [
+        Output("alert-upload-success", "children"),
+        Output("alert-upload-success", "is_open"),
+        Output("alert-upload-error", "children"),
+        Output("alert-upload-error", "is_open"),
+    ],
+    [
+        Input("submit-val", "n_clicks"),
+    ],
+    [
+        State("qc-data", "data"),
+        State("token", "data"),
+        State("dropdown-select-inst", "value"),
+    ]
+)
+def submit(n_clicks, qc_data, token, qc_type):
 
-#################### (3) app.callback ####################
+    qc_types = {
+        "Frag":"Agilent Fragment Analyzer",
+        "RNA":"Agilent TapeStation",
+        "DNA":"Agilent TapeStation",
+        "Glow":"GloMax QuantiFluor",
+        "Qbit":"Qubit Flourometric Quantitation",
+        "BioA":"Agilent Bioanalyzer",
+        "BioRad":"qPCR",
+        "Femto":"Agilent Femto Pulse"
+    }
+
+    AD = {
+        "id":"id",
+        "Integrity":"integritynumber",
+        "Range":"sizerange",
+        "Size":"averagesizeinrange",
+        "Conc":"concentrationinrange",
+        # "Conc":"concentration",
+        "Molarity":"concentrationmolarinrange",
+        "Well":"qualitycontroltype"
+    }
+
+    rnaAD = {
+        "id":"id",
+        "Integrity":"integritynumber",
+        "Range":"sizerange",
+        "Size":"averagesizeinrange",
+        "Conc":"concentration",
+        "Molarity":"concentrationmolarinrange",
+        "Well":"qualitycontroltype"
+    }
+
+    try:
+    # if True:
+        button_clicked = ctx.triggered_id
+        if button_clicked == "submit-val":
+            if qc_data:
+                data = json.loads(qc_data)
+            else:
+                return [], False, [], False
+        
+            objs = []
+
+            for elt in data['data']:
+
+                tmp_obj = {}
+
+                for i in range(len(data['columns'])):
+                    key = data['columns'][i]
+                    if key == "Well":
+                        tmp_obj[rnaAD[key]] = qc_types[qc_type]
+                    else: 
+                        tmp_obj[rnaAD[key]] = str(elt[i])
+                # print(tmp_obj)
+                objs.append(tmp_obj)
+
+            tdata = json.loads(auth_utils.token_to_data(token))
+            wrapper = auth_utils.token_response_to_bfabric(tdata)
+
+            n_sammples_saved = 0
+
+            for elt in objs: 
+                res = wrapper.save_object(endpoint="sample", obj=elt)
+                # print(res)
+                # print(res[0])
+                n_sammples_saved += 1
+
+            success_alert_children = [
+                html.H3("Upload Successful!"),
+                html.P([html.B(f"{n_sammples_saved}"), " samples were uploaded to Bfabric."])
+            ]
+            return success_alert_children, True, [], False
+        else: 
+            return [], False, [], False
+
+    except Exception as e: 
+    # else:
+        print(e)
+        alert_children = [
+            html.H3("Upload Failed."),
+            html.P("Please try again. If you continue to encounter issues, please submit a bug report using the bug report tab."),
+            html.P(f"Internal Traceback: {e}")
+        ]
+        return [], False, alert_children, True
+            
+
+@app.callback(
+    Output("modal", "is_open"),
+    [Input("submit-val-intro", "n_clicks"), Input("submit-val", "n_clicks")],
+    [State("modal", "is_open")],
+)
+def toggle_modal(n1, n2, is_open):
+    if n1 or n2:
+        return not is_open
+    return is_open
+
 @app.callback(
     [
         Output('token', 'data'),
@@ -108,11 +271,9 @@ app.layout = html.Div(
         Output('entity', 'data'),
         Output('page-content', 'children'),
         Output('page-title', 'children'),
-        Output('sidebar_text', 'hidden'),
-        Output('example-slider', 'disabled'),
-        Output('example-dropdown', 'disabled'),
-        Output('example-input', 'disabled'),
-        Output('example-button', 'disabled'),
+        Output('dropdown-select-inst', 'disabled'),
+        Output('drag-drop', 'disabled'),
+        Output('submit-val-intro', 'disabled'),
     ],
     [
         Input('url', 'search'),
@@ -120,87 +281,459 @@ app.layout = html.Div(
 )
 def display_page(url_params):
     
-    base_title = "Bfabric App Template"
+    base_title = ""
 
     if not url_params:
-        return None, None, None, components.no_auth, base_title, True, True, True, True, True
+        return None, None, None, components.no_auth, base_title, True, True, True
     
     token = "".join(url_params.split('token=')[1:])
     tdata_raw = auth_utils.token_to_data(token)
     
     if tdata_raw:
         if tdata_raw == "EXPIRED":
-            return None, None, None, components.expired, base_title, True, True, True, True, True
+            return None, None, None, components.expired, base_title, True, True, True
 
         else: 
             tdata = json.loads(tdata_raw)
     else:
-        return None, None, None, components.no_auth, base_title, True, True, True, True, True
+        return None, None, None, components.no_auth, base_title, True, True, True
     
     if tdata:
         entity_data = json.loads(auth_utils.entity_data(tdata))
-        page_title = f"{base_title} - {tdata['entityClass_data']} - {tdata['entity_id_data']} ({tdata['environment']} System)" if tdata else "Bfabric App Interface"
+        page_title = f"{base_title}{tdata['entityClass_data']} {tdata['entity_id_data']}: {entity_data['name']}" if tdata else "Bfabric App Interface"
 
         if not tdata:
-            return token, None, None, components.no_auth, page_title, True, True, True, True, True
+            return token, None, None, components.no_auth, page_title, True, True, True
         
         elif not entity_data:
-            return token, None, None, components.no_entity, page_title, True, True, True, True, True
+            return token, None, None, components.no_entity, page_title, True, True, True
         
         else:
             if not DEV:
-                return token, tdata, entity_data, components.auth, page_title, False, False, False, False, False
+                return token, tdata, entity_data, components.auth, page_title, False, False, False
             else: 
-                return token, tdata, entity_data, components.dev, page_title, True, True, True, True, True
+                return token, tdata, entity_data, components.dev, page_title, True, True, True
     else: 
-        return None, None, None, components.no_auth, base_title, True, True, True, True, True
-    
+        return None, None, None, components.no_auth, base_title, True, True, True
+
+
+@app.callback(Output('next-card', 'children'),
+              [Input('dropdown-select-inst', 'value')])
+def generate_qc_dropdown(obj):
+
+    if obj == "RNA":
+        new_drop = [
+            dcc.Dropdown(
+                id="qc-type",
+                options=[
+                    {
+                        "label": "Standard Sensitivity RNA",
+                        "value": "RNA"
+                    },
+                    {
+                        "label": "High Sensitivity RNA",
+                        "value": "HSRNA",
+                    },],
+                clearable=False,
+                searchable=False,
+                value="RNA",
+                
+            ),
+            html.Br(), 
+            dcc.Dropdown(
+                id="upload-type",
+                options=[
+                    {
+                        "label": "Sample Table",
+                        "value": "ST"
+                    },
+                    {
+                        "label": "Compact Region Table",
+                        "value": "CRT",
+                    },],
+                clearable=False,
+                searchable=False,
+                value="CRT",
+                
+            ),
+        ]
+    elif obj == "DNA":
+        new_drop = [
+            dcc.Dropdown(
+            id="qc-type",
+            options=[
+                {
+                    "label": "Standard Sensitivity D1000",
+                    "value": "D1k"
+                },
+                {
+                    "label": "High Sensitivity D1000",
+                    "value": "HSD1k",
+                },
+                {
+                    "label": "gDNA",
+                    "value": "gDNA",
+                },
+                {
+                    "label": "Standard Sensitivity D5000",
+                    "value": "D5k",
+                },
+                {
+                    "label": "High Sensitivity D5000",
+                    "value": "HSD5k",
+                },
+            ],
+            clearable=False,
+            searchable=False,
+            value="D1k",
+            
+        ),
+        html.Br(), 
+        dcc.Dropdown(
+            id="upload-type",
+            options=[
+                {
+                    "label": "Sample Table",
+                    "value": "ST"
+                },
+                {
+                    "label": "Compact Region Table",
+                    "value": "CRT",
+                },],
+            clearable=False,
+            searchable=False,
+            value="CRT",
+            
+        ),]
+
+    elif obj == "Qbit":
+        new_drop = [
+            dcc.Dropdown(
+                id="qc-type",
+                options=[
+                    {
+                        "label": "Qubit DNA",
+                        "value": "QDNA"
+                    },
+                    {
+                        "label": "Qubit RNA",
+                        "value": "QRNA",
+                    },
+                ],
+                clearable=False,
+                searchable=False,
+                value="QO",
+                
+            ),
+            html.Br(), 
+            dcc.Dropdown(
+                id="upload-type",
+                options=[
+                    {
+                        "label": "Qubit CSV Upload",
+                        "value": "QbitUpload"
+                    },
+                ],
+                clearable=False,
+                searchable=False,
+                value="QO",
+                
+            ),
+        ]
+
+    elif obj == "BioA":
+        new_drop = [
+
+            dcc.Dropdown(
+                id="qc-type",
+                options=[
+                    {
+                        "label": "DNA",
+                        "value": "BioA-DNA"
+                    },
+                    {
+                        "label": "RNA",
+                        "value": "BioA-RNA",
+                    },],
+                clearable=False,
+                searchable=False,
+                value="DNA",
+                
+            ),
+            html.Br(),
+            dcc.Dropdown(
+                id="upload-type",
+                options=[
+                    {
+                        "label": "BioAnalyzer Output",
+                        "value": "BioAnalyzerUpload"
+                    },
+                ],
+                clearable=False,
+                searchable=False,
+                value="BAO",
+                
+            ),
+        ]
+
+    elif obj == "BioRad":
+        new_drop = [
+
+            dcc.Dropdown(
+                id="qc-type",
+                options=[
+                    {
+                        "label": "DNA",
+                        "value": "BioRad-DNA"
+                    },
+                    {
+                        "label": "RNA",
+                        "value": "BioRad-RNA",
+                    },],
+                clearable=False,
+                searchable=False,
+                value="DNA",
+                
+            ),
+            html.Br(),
+            dcc.Dropdown(
+                id="upload-type",
+                options=[
+                    {
+                        "label": "BioRad Output",
+                        "value": "BioRadUpload"
+                    },
+                ],
+                clearable=False,
+                searchable=False,
+                value="BRO",
+                
+            ),
+        ]
+
+    elif obj == "Femto":
+        new_drop = [
+
+            dcc.Dropdown(
+                id="qc-type",
+                options=[
+                    {
+                        "label": "DNA",
+                        "value": "Femto-DNA"
+                    },
+                    {
+                        "label": "RNA",
+                        "value": "Femto-RNA",
+                    },],
+                clearable=False,
+                searchable=False,
+                value="DNA",
+                
+            ),
+            html.Br(),
+            dcc.Dropdown(
+                id="upload-type",
+                options=[
+                    {
+                        "label": "FemtoPulse Output",
+                        "value": "FemtoPulseUpload"
+                    },
+                ],
+                clearable=False,
+                searchable=False,
+                value="FPO",
+                
+            ),
+        ]
+
+    elif obj == "Frag":
+        new_drop = [
+            dcc.Dropdown(
+                id="qc-type",
+                options=[
+                    {
+                        "label": "RNA",
+                        "value": "RNA"
+                    },
+                    {
+                        "label": "NGS",
+                        "value": "DNA",
+                    },],
+                clearable=False,
+                searchable=False,
+                value="DNA",
+                
+            ),
+            html.Br(),
+            dcc.Dropdown(
+                id="upload-type",
+                options=[
+                    {
+                        "label": "Fragment Analyzer Output",
+                        "value": "FAO"
+                    },
+                ],
+                clearable=False,
+                searchable=False,
+                value="FAO",
+            ),
+        ]
+
+    else:
+        new_drop = []
+
+    return new_drop
+
+
+
 @app.callback(
-    Output('auth-div', 'children'),
-    [
-        Input('example-slider', 'value'),
-        Input('example-dropdown', 'value'),
-        Input('example-input', 'value'),
-        Input('example-button', 'n_clicks')
+    output=[
+        # Output('div-graphs-qc','children'),
+        Output('auth-div','children'),
+        Output('qc-data','data'),
+        Output('alert-n-samples','children'),
+        Output('alert-n-samples','is_open'),
+        Output('alert-merge-error','children'),
+        Output('alert-merge-error','is_open'),
     ],
-    [
-        State('entity', 'data'),
-        State('token_data', 'data'),
+    inputs = [
+        Input('drag-drop', 'contents')
+    ],
+    state=[
+        State('dropdown-select-inst','value'),
+        State('token','data'),
+        State('qc-type','value'),
+        State('upload-type','value'),
+        State('entity','data')
     ]
 )
-def update_auth_div(slider_val, dropdown_val, input_val, n_clicks, entity_data, token_data):
+def generate_graph(fl, instrument, token, qcType, uploadType, entity_data): 
 
-    if not entity_data or not token_data:
-        return None
+    alert_n_samples_title = [html.P("")]
+    alert_merge_title = [html.P("")]
+    alert_merge_open = False
+    alert_n_samples_open = False
 
-    entity_details = [
-        html.H1(f"Entity Data:  "),
-        html.P(f"Entity Class: {token_data['entityClass_data']}"),
-        html.P(f"Entity ID: {token_data['entity_id_data']}"),
-        html.P(f"Created By: {entity_data['createdby']}"),
-        html.P(f"Created: {entity_data['created']}"),
-        html.P(f"Modified: {entity_data['modified']}"),
-    ]
+    print("INSTRIMENT")
+    print(instrument)
 
-    output = dbc.Row(
-        [
-            dbc.Col(
-                [
-                    html.H1("Component Data: "),
-                    html.P(f"Slider Value: {slider_val}"),
-                    html.P(f"Dropdown Value: {dropdown_val}"),
-                    html.P(f"Input Value: {input_val}"),
-                    html.P(f"Button Clicks: {n_clicks}")
+    print("QC TYPE")
+    print(qcType)
+
+    print("UPLOAD TYPE")
+    print(uploadType)
+
+    try:
+
+        token_data = auth_utils.token_to_data(token)
+        if token_data is None:
+            return components.no_auth, None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open
+        plate = json.loads(token_data)['entity_id_data']
+
+        send = html.Div()
+        title = ""
+
+        D = QC(entity_data)
+
+        D.table_type = uploadType
+        if instrument != "Frag":
+            D.TS_type = qcType
+        elif qcType is None: 
+            pass
+        else:
+            D.TS_type = "FRAG_"+qcType
+
+        if type(None) != type(fl):
+            D.upload_dataset = pc(fl)
+
+        if type(None) != type(plate):
+            D.plate_number = plate
+
+        if type(None) != type(plate) and type(None) != type(fl):
+            D.merged()
+
+            # send = html.Div([
+            df = D.merged_dataset
+            send = dash_table.DataTable(
+                    df.to_dict("records"),
+                    [{"name": i, "id": i} for i in df.columns],
+                    style_data_conditional=[
+                        {
+                            'if': {'row_index': 'odd'},
+                            'backgroundColor': 'rgb(220, 220, 220)',
+                        }
+                    ],
+                    style_cell={'padding':'10px'},
+                    style_data={
+                        'color': 'black',
+                        'backgroundColor': 'white'
+                    },
+                    style_header={
+                        'backgroundColor': 'rgb(210, 210, 210)',
+                        'color': 'black',
+                        'fontWeight': 'bold'
+                    }
+                )
+            
+            if len(D.bfabric_dataset) != len(D.upload_dataset):
+                alert_n_samples_title = [
+                    html.H3("Warning: N Samples in your file ≠ N Samples on the bfabric plate."),
+                    html.P("Please double-check that you've uploaded the correct data for the correct plate."),
+                    html.P([f"Number of samples in the file you uploaded: ", html.B(f"{len(D.upload_dataset)}")]),
+                    html.P([f"Number of samples assigned to the plate in Bfabric: ", html.B(f"{len(D.bfabric_dataset)}")])
                 ]
-            ),
-            dbc.Col(
-                entity_details
-            )
+                alert_n_samples_open = True
+            title = "Merged Data"
+
+        elif type(None) != type(plate) and type(None) == type(fl):
+            df = D.bfabric_dataset
+            send = dash_table.DataTable(
+                    df.to_dict("records"),
+                    [{"name": i, "id": i} for i in df.columns],
+                    style_data_conditional=[
+                        {
+                            'if': {'row_index': 'odd'},
+                            'backgroundColor': 'rgb(220, 220, 220)',
+                        }
+                    ],
+                    style_cell={'padding':'10px'},
+                    style_data={
+                        'color': 'black',
+                        'backgroundColor': 'white'
+                    },
+                    style_header={
+                        'backgroundColor': 'rgb(210, 210, 210)',
+                        'color': 'black',
+                        'fontWeight': 'bold'
+                    }
+                )
+            title = "Bfabric Data"
+            
+        div_send = html.Div(
+            children=[
+                html.H3(title),
+                html.Br(),
+                send
+            ],
+            style={"margin-left":"2vw", "margin-right":"10vw", "font-size":"20px"}
+
+        )
+        
+        return div_send, D.json, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open
+
+    except Exception as e: 
+
+        print("ERROR")
+        print(e)
+
+        alert_merge_title = [
+            html.H3("There was an error merging your file with the plate data in Bfabric."),
+            html.P("Please double-check that the type of dataset you've specified matches the file you're uploading. If you've checked this and you're still having trouble, please submit a bug report using the bug report tab."),
+            html.P(f"Internal Traceback: {e}")
         ]
-    )
+        alert_merge_open = True
 
-    return output
-
+        return html.Div(), None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open
 
 if __name__ == '__main__':
-    app.run_server(debug=False, port=PORT, host=HOST)
+    app.run_server(debug=True, port=PORT, host=HOST)

@@ -88,6 +88,21 @@ def entity_data(token_data: dict) -> str:
 
     if wrapper and entity_class and endpoint and entity_id:
         xml = wrapper.read_object(endpoint=endpoint, obj={"id":entity_id})[0]
+        
+        if type(xml) == type(None):
+            pass # TODO
+        elif xml.type != "Quality Control":
+            pass # TODO
+        elif xml.status == "finished":
+            pass # TODO
+
+        bfabric_positions = []
+        bfabric_ids = []
+
+        for x in range(len(xml.sample)):  #for all samples on plate
+            bfabric_positions.append(xml.sample[x]._gridposition)  # get sample plate position
+            bfabric_ids.append(xml.sample[x]._id) # get sample id
+
     else:
         return None
 
@@ -95,6 +110,10 @@ def entity_data(token_data: dict) -> str:
         "createdby": xml.createdby, 
         "created": xml.created,
         "modified": xml.modified,
-        # . . . add additional attributes here which you want to save from the entity data
+        "name": xml.name,
+        "sample_data":{
+            "Well":bfabric_positions, 
+            "ids":bfabric_ids
+        }
     })
     return json_data
