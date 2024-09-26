@@ -54,10 +54,12 @@ default_sidebar = [
         id="next-card", 
         style={"border": "none"},
         children=[
+            html.P(id="sidebar_text_2", children="Select data type:"),
             dcc.Dropdown(
                 id="qc-type",
             ),
             html.Br(),
+            html.P(id="sidebar_text_3", children="Select data format:"),
             dcc.Dropdown(
                 id="upload-type",
             ),
@@ -165,9 +167,9 @@ docs_tab = dbc.Row(
                 [html.Div(
                     id="page-content-docs-children",
                     children=[
-                        html.H2("Welcome to The Barcode Dashboard"),
+                        html.H2("Welcome to The QC Upload App"),
                         html.P([
-                            "This app serves as a user interface for updating barcodes of run samples within B-Fabric."
+                            "This app serves as a user interface for uploading QC data directly to BFabric plate objects, to reduce the overall impact of manual data entry on laboratory efficiency."
                         ]),
                         html.Br(),
                         html.H4("Developer Info"),
@@ -180,83 +182,47 @@ docs_tab = dbc.Row(
                         html.H4("Some Notes on this App\'s Functionality"),
                         html.P([
                             """
-                            This app is designed to allow users to update the barcodes of samples
-                            in B-Fabric. """
+                            This app is designed to allow users to add QC values from laboratory instruments en masse to B-Fabric. """
                         ]),
                         html.Br(),
                         html.P([
                             """
 
                             This app communicates with the B-Fabric API to fetch and save data in bfabric.
-                            However the B-Fabric API currently does not support updating whitespace as barcodes.
-                            It is therfore impossible to set a barcode to an empty string, or a space (for instance). 
-                            In cases where clearing out a barcode is imperative for successful demultiplexing, I reccomend 
-                            setting the barcode to a placeholder value such as 'G', and then demultiplexing 
-                            using the draugrUI with an additional barcode mismatch. 
+                            Please make sure to manually validate that any action taken on this application, to add QC values to B-Fabric plates, has been executed successfully in B-Fabric.
                             """
                         ]),
                         html.Br(),
                         html.P("""
                             \n\n
                             The app uses in-memory storage to make it simple to reset the barcodes to their initial state (by simply refreshing the page).
-                            However, this means that the app will not remember the state of the barcodes if the page is refreshed. 
-                            Only refresh the page after you have saved the barcodes in B-Fabric, or if you wish to reset the barcodes to their initial state.
+                            However, this means that the app will not remember the state of your samples if the page is refreshed. 
+                            Only refresh the page after you have saved the samples in B-Fabric, or if you wish to reset the application to its initial state.
                             """
                         ),
-                        html.H4("Update Barcodes Tab"),
+                        html.H4("Update QC Values Tab"),
                         html.P([
                             html.B(
-                                "Load / Reload --"
-                            ), " Load the order you'd like to update barcodes for.",
+                                "Select Instrument --"
+                            ), " Select the instrument which produced the data you intend to upload.",
                             html.Br(),html.Br(),
                             html.B(
-                                "Swap Indices --"
-                            ), " Swap the indices of the selected rows.",
+                                "Select Data Type --"
+                            ), " Select the data type (for instruments which can produce data for more than one sample type).",
                             html.Br(),html.Br(),
                             html.B(
-                                "RevComp index 1 --"
-                            ), " Reverse complement the first index of the selected rows.",
+                                "Select Data Format --"
+                            ), " Select the format of the file which you'll upload.",
                             html.Br(),html.Br(),
                             html.B(
-                                "RevComp index 2 --"
-                            ), " Reverse complement the second index of the selected rows.",
+                                "Drag and Drop or Select a File --"
+                            ), " This is where you can upload the file which was produced by the instrument.",
                             html.Br(),html.Br(),
                             html.B(
-                                "RevSeq index 1 --"
-                            ), " Reverse the sequence of the first index of the selected rows.",
+                                "Submit --"
+                            ), " Once you've uploaded data, you should see \"Merged Dataset\" appear instead of \"B-Fabric Data\". Now your data is ready for upload. In this instance, you can click \"Submit\" to trigger the upload to B-Fabric.",
                             html.Br(),html.Br(),
-                            html.B(
-                                "RevSeq index 2 --"
-                            ), " Reverse the sequence of the second index of the selected rows.",
-                            html.Br(),html.Br(),
-                            html.B(
-                                "Trim index 1 --"
-                            ), " Trim the first index of the selected rows.",
-                            html.Br(),html.Br(),
-                            html.B(
-                                "Trim index 2 --"
-                            ), " Trim the second index of the selected rows.",
-                            html.Br(),html.Br(),
-                            html.B(
-                                "Set index 1 --"
-                            ), " Set the first index of the selected rows to a specific value.",
-                            html.Br(),html.Br(),
-                            html.B(
-                                "Set index 2 --"
-                            ), " Set the second index of the selected rows to a specific value.",
-                            html.Br(),html.Br(),
-                            html.B(
-                                "Reset Value"
-                            ), " -- Set the value to reset the selected rows to.",
-                            html.Br(),html.Br(),
-                            html.B(
-                                "Check / Uncheck All --"
-                            ), " Check or uncheck all rows.",
-                            html.Br(),html.Br(),
-                            html.B(
-                                "Update B-Fabric --"
-                            ), " Update the barcodes of the selected rows in B-Fabric."
-                        ], style={"margin-left": "2vw"}),
+                            ], style={"margin-left": "2vw"}),
                         html.Br(),            
                         ], style={"margin-left": "2vw"}),
                         html.H4("Report a Bug Tab"),
@@ -313,7 +279,7 @@ report_bug_tab = dbc.Row(
 
 tabs = dbc.Tabs(
     [
-        dbc.Tab(main_tab, label="Update Barcodes"),
+        dbc.Tab(main_tab, label="Update QC Values"),
         dbc.Tab(docs_tab, label="Documentation"),
         dbc.Tab(report_bug_tab, label="Report a Bug"),
     ]

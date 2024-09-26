@@ -109,35 +109,6 @@ app.layout = html.Div(
                         ]),
                     ])
                 ),
-                # dbc.Row(
-                #     id="page-content-main",
-                    # children=[
-                    #     dbc.Col(
-                    #         html.Div(
-                    #             id="sidebar",
-                    #             children=components.default_sidebar,
-                    #             style={"border-right": "2px solid #d4d7d9", "height": "100%", "padding": "20px", "font-size": "20px"}
-                    #         ),
-                    #         width=3,
-                    #     ),
-                    #     dbc.Col(
-                    #         html.Div(
-                    #             id="page-content",
-                    #             children=components.no_auth + [html.Div(id="auth-div")],
-                    #             style={
-                    #                 "margin-top":"2vh", 
-                    #                 "margin-left":"2vw", 
-                    #                 "font-size":"20px",
-                    #                 "max-height":"80%",
-                    #                 "overflow-y":"scroll",
-                    #                 "margin-bottom":"2vh"
-                    #             },
-                    #         ),
-                    #         width=9,
-                    #     ),
-                    # ],
-                #     style={"margin-top": "0px", "min-height": "40vh"}
-                # ),
                 components.tabs,
             ], style={"width":"100vw"},  
             fluid=True
@@ -149,6 +120,45 @@ app.layout = html.Div(
         components.modal_submit,
     ],style={"width":"100vw", "overflow-x":"hidden", "overflow-y":"scroll"}
 )
+
+
+@app.callback(
+    [
+        Output("alert-fade-bug", "is_open"),
+        Output("alert-fade-bug-fail", "is_open")
+    ],
+    [
+        Input("submit-bug-report", "n_clicks")
+    ],
+    [
+        State("token", "data"),
+        State("entity", "data"),
+        State("bug-description", "value")
+    ]
+)
+def submit_bug_report(n_clicks, token, entity_data, bug_description):
+
+    if token: 
+        token_data = json.loads(auth_utils.token_to_data(token))
+    else:
+        token_data = ""
+
+    if n_clicks:
+        try:
+            sending_result = auth_utils.send_bug_report(
+                token_data=token_data,
+                entity_data=entity_data,
+                description=bug_description
+            )
+            if sending_result:
+                return True, False
+            else:
+                return False, True
+        except:
+            return False, True
+
+    return False, False
+
 
 @app.callback(
     [
@@ -323,6 +333,7 @@ def generate_qc_dropdown(obj):
 
     if obj == "RNA":
         new_drop = [
+            html.P(id="sidebar_text_2", children="Select data type:"),
             dcc.Dropdown(
                 id="qc-type",
                 options=[
@@ -340,6 +351,7 @@ def generate_qc_dropdown(obj):
                 
             ),
             html.Br(), 
+            html.P(id="sidebar_text_3", children="Select data format:"),
             dcc.Dropdown(
                 id="upload-type",
                 options=[
@@ -359,6 +371,7 @@ def generate_qc_dropdown(obj):
         ]
     elif obj == "DNA":
         new_drop = [
+            html.P(id="sidebar_text_2", children="Select data type:"),
             dcc.Dropdown(
             id="qc-type",
             options=[
@@ -389,6 +402,7 @@ def generate_qc_dropdown(obj):
             
         ),
         html.Br(), 
+        html.P(id="sidebar_text_3", children="Select data format:"),
         dcc.Dropdown(
             id="upload-type",
             options=[
@@ -408,6 +422,7 @@ def generate_qc_dropdown(obj):
 
     elif obj == "Qbit":
         new_drop = [
+            html.P(id="sidebar_text_2", children="Select data type:"),
             dcc.Dropdown(
                 id="qc-type",
                 options=[
@@ -426,6 +441,7 @@ def generate_qc_dropdown(obj):
                 
             ),
             html.Br(), 
+            html.P(id="sidebar_text_3", children="Select data format:"),
             dcc.Dropdown(
                 id="upload-type",
                 options=[
@@ -443,7 +459,7 @@ def generate_qc_dropdown(obj):
 
     elif obj == "BioA":
         new_drop = [
-
+            html.P(id="sidebar_text_2", children="Select data type:"),
             dcc.Dropdown(
                 id="qc-type",
                 options=[
@@ -461,6 +477,7 @@ def generate_qc_dropdown(obj):
                 
             ),
             html.Br(),
+            html.P(id="sidebar_text_3", children="Select data format:"),
             dcc.Dropdown(
                 id="upload-type",
                 options=[
@@ -478,7 +495,7 @@ def generate_qc_dropdown(obj):
 
     elif obj == "BioRad":
         new_drop = [
-
+            html.P(id="sidebar_text_2", children="Select data type:"),
             dcc.Dropdown(
                 id="qc-type",
                 options=[
@@ -496,6 +513,7 @@ def generate_qc_dropdown(obj):
                 
             ),
             html.Br(),
+            html.P(id="sidebar_text_3", children="Select data format:"),
             dcc.Dropdown(
                 id="upload-type",
                 options=[
@@ -513,7 +531,7 @@ def generate_qc_dropdown(obj):
 
     elif obj == "Femto":
         new_drop = [
-
+            html.P(id="sidebar_text_2", children="Select data type:"),
             dcc.Dropdown(
                 id="qc-type",
                 options=[
@@ -531,6 +549,7 @@ def generate_qc_dropdown(obj):
                 
             ),
             html.Br(),
+            html.P(id="sidebar_text_3", children="Select data format:"),
             dcc.Dropdown(
                 id="upload-type",
                 options=[
@@ -548,6 +567,7 @@ def generate_qc_dropdown(obj):
 
     elif obj == "Frag":
         new_drop = [
+            html.P(id="sidebar_text_2", children="Select data type:"),
             dcc.Dropdown(
                 id="qc-type",
                 options=[
@@ -565,6 +585,7 @@ def generate_qc_dropdown(obj):
                 
             ),
             html.Br(),
+            html.P(id="sidebar_text_3", children="Select data format:"),
             dcc.Dropdown(
                 id="upload-type",
                 options=[
