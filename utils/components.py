@@ -89,6 +89,10 @@ no_auth = [
     html.A('Login to Bfabric', href='https://fgcz-bfabric.uzh.ch/bfabric/')
 ]
 
+not_qc_plate = [
+    html.P("The plate you've selected is not a QC plate. Please select a QC plate to continue."),
+]
+
 expired = [
     html.P("Your session has expired. Please log into bfabric to continue:"),
     html.A('Login to Bfabric', href='https://fgcz-bfabric.uzh.ch/bfabric/')

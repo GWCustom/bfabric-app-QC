@@ -115,7 +115,8 @@ def entity_data(token_data: dict) -> str:
         "sample_data":{
             "Well":bfabric_positions, 
             "ids":bfabric_ids
-        }
+        },
+        "type":xml.type,
     })
     return json_data
 

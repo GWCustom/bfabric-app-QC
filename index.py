@@ -82,6 +82,14 @@ app.layout = html.Div(
                                     style={"max-width":"80vw", "margin":"10px"}
                                 ),
                                 dbc.Alert(
+                                    children=[],
+                                    id="alert-not-qc-plate",
+                                    dismissable=True,
+                                    is_open=False,
+                                    color="danger",
+                                    style={"max-width":"80vw", "margin":"10px"}
+                                ),
+                                dbc.Alert(
                                     children=[], 
                                     id="alert-upload-error",
                                     dismissable=True,
@@ -104,6 +112,22 @@ app.layout = html.Div(
                                     is_open=False,
                                     color="danger",
                                     style={"max-width":"80vw", "margin":"10px"}
+                                ),
+                                dbc.Alert(
+                                    "Failed to submit bug report! Please email the developers directly at the email below!",
+                                    id="alert-fade-bug-fail", 
+                                    dismissable=True,
+                                    is_open=False, 
+                                    color="danger",
+                                    style={"max-width":"50vw", "margin":"10px"}
+                                ),
+                                dbc.Alert(
+                                    "You're bug report has been submitted. Thanks for helping us improve!",
+                                    id="alert-fade-bug",
+                                    dismissable=True,
+                                    is_open=False,
+                                    color="info",
+                                    style={"max-width":"50vw", "margin":"10px"}
                                 ),
                             ]),
                         ]),
@@ -284,6 +308,8 @@ def toggle_modal(n1, n2, is_open):
         Output('dropdown-select-inst', 'disabled'),
         Output('drag-drop', 'disabled'),
         Output('submit-val-intro', 'disabled'),
+        Output('alert-not-qc-plate', 'children'),
+        Output('alert-not-qc-plate', 'is_open'),
     ],
     [
         Input('url', 'search'),
@@ -294,37 +320,45 @@ def display_page(url_params):
     base_title = ""
 
     if not url_params:
-        return None, None, None, components.no_auth, base_title, True, True, True
+        return None, None, None, components.no_auth, base_title, True, True, True, [], False
     
     token = "".join(url_params.split('token=')[1:])
     tdata_raw = auth_utils.token_to_data(token)
     
     if tdata_raw:
         if tdata_raw == "EXPIRED":
-            return None, None, None, components.expired, base_title, True, True, True
+            return None, None, None, components.expired, base_title, True, True, True, [], False
 
         else: 
             tdata = json.loads(tdata_raw)
     else:
-        return None, None, None, components.no_auth, base_title, True, True, True
+        return None, None, None, components.no_auth, base_title, True, True, True, [], False
     
     if tdata:
         entity_data = json.loads(auth_utils.entity_data(tdata))
         page_title = f"{base_title}{tdata['entityClass_data']} {tdata['entity_id_data']}: {entity_data['name']}" if tdata else "Bfabric App Interface"
 
+        if entity_data['type'] != "Quality Control":
+            alert = [
+                html.H3("This plate is not a Quality Control plate."),
+                html.P("Please make sure you're using the correct plate type, and try again.")
+            ]
+            return token, tdata, entity_data, components.not_qc_plate, page_title, True, True, True, alert, True
+
+        
         if not tdata:
-            return token, None, None, components.no_auth, page_title, True, True, True
+            return token, None, None, components.no_auth, page_title, True, True, True, [], False
         
         elif not entity_data:
-            return token, None, None, components.no_entity, page_title, True, True, True
+            return token, None, None, components.no_entity, page_title, True, True, True, [], False
         
         else:
             if not DEV:
-                return token, tdata, entity_data, components.auth, page_title, False, False, False
+                return token, tdata, entity_data, components.auth, page_title, False, False, False, [], False
             else: 
-                return token, tdata, entity_data, components.dev, page_title, True, True, True
+                return token, tdata, entity_data, components.dev, page_title, True, True, True, [], False
     else: 
-        return None, None, None, components.no_auth, base_title, True, True, True
+        return None, None, None, components.no_auth, base_title, True, True, True, [], False
 
 
 @app.callback(Output('next-card', 'children'),
