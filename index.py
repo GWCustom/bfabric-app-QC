@@ -72,64 +72,9 @@ app.layout = html.Div(
                             style={"margin-top":"0px", "min-height":"80px","height":"6vh","border-bottom":"2px solid #d4d7d9"}
                         ),
                         dcc.Loading([    
-                            html.Div([    
-                                dbc.Alert(
-                                    children=[],
-                                    id="alert-n-samples",
-                                    dismissable=True,
-                                    is_open=False,
-                                    color="warning",
-                                    style={"max-width":"80vw", "margin":"10px"}
-                                ),
-                                dbc.Alert(
-                                    children=[],
-                                    id="alert-not-qc-plate",
-                                    dismissable=True,
-                                    is_open=False,
-                                    color="danger",
-                                    style={"max-width":"80vw", "margin":"10px"}
-                                ),
-                                dbc.Alert(
-                                    children=[], 
-                                    id="alert-upload-error",
-                                    dismissable=True,
-                                    is_open=False,
-                                    color="danger",
-                                    style={"max-width":"80vw", "margin":"10px"}
-                                ),
-                                dbc.Alert(
-                                    children=[],
-                                    id="alert-upload-success",
-                                    dismissable=True,
-                                    is_open=False,
-                                    color="success",
-                                    style={"max-width":"80vw", "margin":"10px"}
-                                ),
-                                dbc.Alert(
-                                    children=[],
-                                    id="alert-merge-error",
-                                    dismissable=True,
-                                    is_open=False,
-                                    color="danger",
-                                    style={"max-width":"80vw", "margin":"10px"}
-                                ),
-                                dbc.Alert(
-                                    "Failed to submit bug report! Please email the developers directly at the email below!",
-                                    id="alert-fade-bug-fail", 
-                                    dismissable=True,
-                                    is_open=False, 
-                                    color="danger",
-                                    style={"max-width":"50vw", "margin":"10px"}
-                                ),
-                                dbc.Alert(
-                                    "You're bug report has been submitted. Thanks for helping us improve!",
-                                    id="alert-fade-bug",
-                                    dismissable=True,
-                                    is_open=False,
-                                    color="info",
-                                    style={"max-width":"50vw", "margin":"10px"}
-                                ),
-                            ]),
+                            html.Div(
+                                children=components.alerts,
+                            ),
                         ]),
                     ])
                 ),
@@ -190,6 +135,8 @@ def submit_bug_report(n_clicks, token, entity_data, bug_description):
         Output("alert-upload-success", "is_open"),
         Output("alert-upload-error", "children"),
         Output("alert-upload-error", "is_open"),
+        Output("alert-no-data", "children"),
+        Output("alert-no-data", "is_open"),
     ],
     [
         Input("submit-val", "n_clicks"),
@@ -241,7 +188,11 @@ def submit(n_clicks, qc_data, token, qc_type):
             if qc_data:
                 data = json.loads(qc_data)
             else:
-                return [], False, [], False
+                no_data_alert = [
+                    html.H3("You haven't uploaded any data."),
+                    html.P("Please upload data before submitting.")
+                ]
+                return [], False, [], False, no_data_alert, True
         
             objs = []
 
@@ -273,9 +224,9 @@ def submit(n_clicks, qc_data, token, qc_type):
                 html.H3("Upload Successful!"),
                 html.P([html.B(f"{n_sammples_saved}"), " samples were uploaded to Bfabric."])
             ]
-            return success_alert_children, True, [], False
+            return success_alert_children, True, [], False, [], False
         else: 
-            return [], False, [], False
+            return [], False, [], False, [], False
 
     except Exception as e: 
     # else:
@@ -791,4 +742,4 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
         return html.Div(), None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open
 
 if __name__ == '__main__':
-    app.run_server(debug=True, port=PORT, host=HOST)
+    app.run_server(debug=False, port=PORT, host=HOST)
