@@ -288,3 +288,70 @@ tabs = dbc.Tabs(
         dbc.Tab(report_bug_tab, label="Report a Bug"),
     ]
 )
+
+alerts = [    
+    dbc.Alert(
+        children=[],
+        id="alert-n-samples",
+        dismissable=True,
+        is_open=False,
+        color="warning",
+        style={"max-width":"80vw", "margin":"10px"}
+    ),
+    dbc.Alert(
+        children=[],
+        id="alert-not-qc-plate",
+        dismissable=True,
+        is_open=False,
+        color="danger",
+        style={"max-width":"80vw", "margin":"10px"}
+    ),
+    dbc.Alert(
+        children=[], 
+        id="alert-upload-error",
+        dismissable=True,
+        is_open=False,
+        color="danger",
+        style={"max-width":"80vw", "margin":"10px"}
+    ),
+    dbc.Alert(
+        children=[],
+        id="alert-upload-success",
+        dismissable=True,
+        is_open=False,
+        color="success",
+        style={"max-width":"80vw", "margin":"10px"}
+    ),
+    dbc.Alert(
+        children=[],
+        id="alert-merge-error",
+        dismissable=True,
+        is_open=False,
+        color="danger",
+        style={"max-width":"80vw", "margin":"10px"}
+    ),
+    dbc.Alert(
+        "Failed to submit bug report! Please email the developers directly at the email below!",
+        id="alert-fade-bug-fail", 
+        dismissable=True,
+        is_open=False, 
+        color="danger",
+        style={"max-width":"50vw", "margin":"10px"}
+    ),
+    dbc.Alert(
+        "You're bug report has been submitted. Thanks for helping us improve!",
+        id="alert-fade-bug",
+        dismissable=True,
+        is_open=False,
+        color="info",
+        style={"max-width":"50vw", "margin":"10px"}
+    ),
+    dbc.Alert(
+        children=[],
+        id="alert-no-data",
+        dismissable=True,
+        is_open=False,
+        color="warning",
+        style={"max-width":"80vw", "margin":"10px"}
+    ),
+]
