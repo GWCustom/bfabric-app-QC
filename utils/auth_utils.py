@@ -2,10 +2,13 @@
 import requests
 import json
 import datetime
-import bfabric
 from dash import html
 import os
 import dash_bootstrap_components as dbc
+import bfabric
+from bfabric import BfabricAuth
+from bfabric import BfabricClientConfig
+
 
 VALIDATION_URL = "https://fgcz-bfabric.uzh.ch/bfabric/rest/token/validate?token="
 HOST = "fgcz-bfabric.uzh.ch"
@@ -59,7 +62,10 @@ def token_to_data(token: str) -> str:
 
 def token_response_to_bfabric(token_response: dict) -> str:
 
-    bfabric_wrapper = bfabric.Bfabric(login=token_response['user_data'], password=token_response['userWsPassword'], webbase=token_response['webbase_data'])
+    bfabric_auth = BfabricAuth(login=token_response.get('user_data'), password=token_response.get('userWsPassword'))
+    bfabric_client_config = BfabricClientConfig(base_url=token_response.get('webbase_data')) 
+
+    bfabric_wrapper = bfabric.Bfabric(config=bfabric_client_config, auth=bfabric_auth)
 
     return bfabric_wrapper
 
@@ -90,37 +96,44 @@ def entity_data(token_data: dict) -> str:
     entity_id = token_data.get('entity_id_data', None)
 
     if wrapper and entity_class and endpoint and entity_id:
-        xml = wrapper.read_object(endpoint=endpoint, obj={"id":entity_id})[0]
-        
-        if type(xml) == type(None):
-            pass # TODO
-        elif xml.type != "Quality Control":
-            pass # TODO
-        elif xml.status == "finished":
-            pass # TODO
+        entity_data_dict = wrapper.read(endpoint=endpoint, obj={"id": entity_id})[0]
 
-        bfabric_positions = []
-        bfabric_ids = []
+        if entity_data_dict:
+            if entity_data_dict.get("type") != "Quality Control":
+                pass  # TODO
+            elif entity_data_dict.get("status") == "finished":
+                pass  # TODO
 
-        for x in range(len(xml.sample)):  #for all samples on plate
-            bfabric_positions.append(xml.sample[x]._gridposition)  # get sample plate position
-            bfabric_ids.append(xml.sample[x]._id) # get sample id
+            bfabric_positions = []
+            bfabric_ids = []
+            samples = entity_data_dict.get("sample", [])
+            
+            for sample in samples:
+                bfabric_positions.append(sample.get("_gridposition"))
+                bfabric_ids.append(sample.get("_id"))
 
+            json_data = json.dumps({
+                "createdby": entity_data_dict.get("createdby"),
+                "created": entity_data_dict.get("created"),
+                "modified": entity_data_dict.get("modified"),
+                "name": entity_data_dict.get("name"),
+                "sample_data": {
+                    "Well": bfabric_positions,
+                    "ids": bfabric_ids
+                },
+                "type": entity_data_dict.get("type"),
+            })
+
+            print(json_data)
+            return json_data
+        else:
+            print("entity_data_dict is empty or None")
+            return None
     else:
+        print("Invalid input or entity information")
         return None
 
-    json_data = json.dumps({
-        "createdby": xml.createdby, 
-        "created": xml.created,
-        "modified": xml.modified,
-        "name": xml.name,
-        "sample_data":{
-            "Well":bfabric_positions, 
-            "ids":bfabric_ids
-        },
-        "type":xml.type,
-    })
-    return json_data
+
 
 
 def send_bug_report(token_data, entity_data, description):
