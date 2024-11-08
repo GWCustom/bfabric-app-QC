@@ -1,7 +1,6 @@
 import pandas as pd
 import bfabric
 
-B = bfabric.Bfabric()
 
 AD = {
     "id":"id",
