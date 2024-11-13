@@ -110,7 +110,7 @@ def entity_data(token_data: dict) -> str:
             
             for sample in samples:
                 bfabric_positions.append(sample.get("_gridposition"))
-                bfabric_ids.append(sample.get("_id"))
+                bfabric_ids.append(sample.get("id"))
 
             json_data = json.dumps({
                 "createdby": entity_data_dict.get("createdby"),
@@ -124,7 +124,6 @@ def entity_data(token_data: dict) -> str:
                 "type": entity_data_dict.get("type"),
             })
 
-            print(json_data)
             return json_data
         else:
             print("entity_data_dict is empty or None")
