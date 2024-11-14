@@ -214,11 +214,23 @@ def submit(n_clicks, qc_data, token, qc_type):
 
             n_sammples_saved = 0
 
-            for elt in objs: 
-                res = wrapper.save_object(endpoint="sample", obj=elt)
-                # print(res)
-                # print(res[0])
-                n_sammples_saved += 1
+            try: 
+
+                for elt in objs: 
+                    # res = wrapper.save_object(endpoint="sample", obj=elt)
+                    res = wrapper.save(endpoint="sample", obj=elt)
+                    print(res)
+                    n_sammples_saved += 1
+
+
+            except Exception as e:
+                print(e)
+                alert_children = [
+                    html.H3("Upload Failed."),
+                    html.P("Please try again. If you continue to encounter issues, please submit a bug report using the bug report tab."),
+                    html.P(f"Internal Traceback: {e}")
+                ]
+                return [], False, alert_children, True, [], False
 
             success_alert_children = [
                 html.H3("Upload Successful!"),
