@@ -215,9 +215,9 @@ def submit(n_clicks, qc_data, token, qc_type):
             n_sammples_saved = 0
 
             for elt in objs: 
-                res = wrapper.save_object(endpoint="sample", obj=elt)
-                # print(res)
-                # print(res[0])
+                # res = wrapper.save_object(endpoint="sample", obj=elt)
+                res = wrapper.save(endpoint="sample", obj=elt)
+                print(res)
                 n_sammples_saved += 1
 
             success_alert_children = [
