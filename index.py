@@ -9,6 +9,7 @@ from objects.QCDataset import QC_Dataset as QC
 # import bfabric
 from utils import auth_utils, components
 from utils.upload_utils import parse_contents as pc
+from utils.objects import Logger
 
 if os.path.exists("./PARAMS.py"):
     try:
@@ -86,9 +87,23 @@ app.layout = html.Div(
         dcc.Store(id='entity', storage_type='session'), # Where we store the entity data retrieved from bfabric
         dcc.Store(id='token_data', storage_type='session'), # Where we store the token auth response
         dcc.Store(id='qc-data', storage_type='session'),
+        dcc.Store(id='log', storage_type='session'), # Where we store the log data
+        dcc.Store(id='dummy-output', storage_type='memory'), # Dummy output for logger
         components.modal_submit,
     ],style={"width":"100vw", "overflow-x":"hidden", "overflow-y":"scroll"}
 )
+
+
+#Callback to safe the log data in the dcc store
+@app.callback(
+    Output('dummy-output', 'data'),#dummy output!
+    [Input('log', 'data')]
+)
+def process_data(log):
+    if log:
+        Logger.from_pickle(log)
+        return None  # Dummy output, not used
+
 
 
 @app.callback(
@@ -102,10 +117,11 @@ app.layout = html.Div(
     [
         State("token", "data"),
         State("entity", "data"),
-        State("bug-description", "value")
+        State("bug-description", "value"),
+        State("log", "data")
     ]
 )
-def submit_bug_report(n_clicks, token, entity_data, bug_description):
+def submit_bug_report(n_clicks, token, entity_data, bug_description, log_data):
 
     if token: 
         token_data = json.loads(auth_utils.token_to_data(token))
@@ -117,13 +133,16 @@ def submit_bug_report(n_clicks, token, entity_data, bug_description):
             sending_result = auth_utils.send_bug_report(
                 token_data=token_data,
                 entity_data=entity_data,
-                description=bug_description
+                description=bug_description,
+                log_data = log_data
             )
+
             if sending_result:
                 return True, False
             else:
                 return False, True
         except:
+            print("sending_results")
             return False, True
 
     return False, False
@@ -145,9 +164,10 @@ def submit_bug_report(n_clicks, token, entity_data, bug_description):
         State("qc-data", "data"),
         State("token", "data"),
         State("dropdown-select-inst", "value"),
+        State("log", "data"),
     ]
 )
-def submit(n_clicks, qc_data, token, qc_type):
+def submit(n_clicks, qc_data, token, qc_type, log_data):
 
     qc_types = {
         "Frag":"Agilent Fragment Analyzer",
@@ -217,8 +237,26 @@ def submit(n_clicks, qc_data, token, qc_type):
             try: 
 
                 for elt in objs: 
-                    # res = wrapper.save_object(endpoint="sample", obj=elt)
-                    res = wrapper.save(endpoint="sample", obj=elt)
+                    #res = wrapper.save(endpoint="sample", obj=elt)
+                    L = Logger.from_pickle(log_data)
+
+
+                    qc_params = {
+                        "qc_type": qc_type,
+                        "instrument": "dropdown-select-inst",  # Replace with the actual value
+                        "upload_type": "upload-type",  # Replace with the actual value
+                        "mapped_parameters": AD if qc_type == "RNA" else rnaAD,
+                    }
+                    
+                    res = L.logthis(
+                        api_call=wrapper.save,
+                        endpoint="sample",
+                        obj=elt,
+                        qc_params=qc_params,
+                        make_log_api_call = True,
+                        )
+
+
                     print(res)
                     n_sammples_saved += 1
 
@@ -273,6 +311,7 @@ def toggle_modal(n1, n2, is_open):
         Output('submit-val-intro', 'disabled'),
         Output('alert-not-qc-plate', 'children'),
         Output('alert-not-qc-plate', 'is_open'),
+        Output('log', 'data')
     ],
     [
         Input('url', 'search'),
@@ -283,22 +322,23 @@ def display_page(url_params):
     base_title = ""
 
     if not url_params:
-        return None, None, None, components.no_auth, base_title, True, True, True, [], False
+        return None, None, None, components.no_auth, base_title, True, True, True, [], False, None
     
     token = "".join(url_params.split('token=')[1:])
     tdata_raw = auth_utils.token_to_data(token)
     
     if tdata_raw:
         if tdata_raw == "EXPIRED":
-            return None, None, None, components.expired, base_title, True, True, True, [], False
+            return None, None, None, components.expired, base_title, True, True, True, [], False, None
 
         else: 
             tdata = json.loads(tdata_raw)
     else:
-        return None, None, None, components.no_auth, base_title, True, True, True, [], False
+        return None, None, None, components.no_auth, base_title, True, True, True, [], False, None
     
     if tdata:
-        entity_data = json.loads(auth_utils.entity_data(tdata))
+        entity_data_json, logger_instance = auth_utils.entity_data(tdata)
+        entity_data = json.loads(entity_data_json)
         page_title = f"{base_title}{tdata['entityClass_data']} {tdata['entity_id_data']}: {entity_data['name']}" if tdata else "Bfabric App Interface"
 
         if entity_data['type'] != "Quality Control":
@@ -306,22 +346,22 @@ def display_page(url_params):
                 html.H3("This plate is not a Quality Control plate."),
                 html.P("Please make sure you're using the correct plate type, and try again.")
             ]
-            return token, tdata, entity_data, components.not_qc_plate, page_title, True, True, True, alert, True
+            return token, tdata, entity_data, components.not_qc_plate, page_title, True, True, True, alert, True, None
 
         
         if not tdata:
-            return token, None, None, components.no_auth, page_title, True, True, True, [], False
+            return token, None, None, components.no_auth, page_title, True, True, True, [], False, None
         
         elif not entity_data:
-            return token, None, None, components.no_entity, page_title, True, True, True, [], False
+            return token, None, None, components.no_entity, page_title, True, True, True, [], False, None
         
         else:
             if not DEV:
-                return token, tdata, entity_data, components.auth, page_title, False, False, False, [], False
+                return token, tdata, entity_data, components.auth, page_title, False, False, False, [], False, logger_instance.to_pickle()
             else: 
-                return token, tdata, entity_data, components.dev, page_title, True, True, True, [], False
+                return token, tdata, entity_data, components.dev, page_title, True, True, True, [], False, None
     else: 
-        return None, None, None, components.no_auth, base_title, True, True, True, [], False
+        return None, None, None, components.no_auth, base_title, True, True, True, [], False, None
 
 
 @app.callback(Output('next-card', 'children'),
@@ -754,4 +794,4 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
         return html.Div(), None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open
 
 if __name__ == '__main__':
-    app.run_server(debug=False, port=PORT, host=HOST)
+    app.run_server(debug=True, port=PORT, host=HOST)
