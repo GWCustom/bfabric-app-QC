@@ -156,6 +156,7 @@ def submit_bug_report(n_clicks, token, entity_data, bug_description, log_data):
         Output("alert-upload-error", "is_open"),
         Output("alert-no-data", "children"),
         Output("alert-no-data", "is_open"),
+        Output("log", "data"),
     ],
     [
         Input("submit-val", "n_clicks"),
@@ -203,10 +204,21 @@ def submit(n_clicks, qc_data, token, dropdown_select_inst_value, upload_type, qc
         "Well":"qualitycontroltype"
     }
 
+    qc_params = {
+        "instrument": dropdown_select_inst_value,
+        "data_type": qc_type,
+        "data_format": upload_type,
+        "submit_button_clicks": n_clicks,
+    }
+
+    L = Logger.from_pickle(log_data)
+
     try:
-    # if True:
         button_clicked = ctx.triggered_id
         if button_clicked == "submit-val":
+            
+            L.log_operation("upload", "User clicked submit button", qc_params=qc_params, make_log_api_call=False)
+
             if qc_data:
                 data = json.loads(qc_data)
             else:
@@ -214,7 +226,7 @@ def submit(n_clicks, qc_data, token, dropdown_select_inst_value, upload_type, qc
                     html.H3("You haven't uploaded any data."),
                     html.P("Please upload data before submitting.")
                 ]
-                return [], False, [], False, no_data_alert, True
+                return [], False, [], False, no_data_alert, True, log_data
         
             objs = []
 
@@ -234,34 +246,23 @@ def submit(n_clicks, qc_data, token, dropdown_select_inst_value, upload_type, qc
             tdata = json.loads(auth_utils.token_to_data(token))
             wrapper = auth_utils.token_response_to_bfabric(tdata)
 
-            n_sammples_saved = 0
+            n_samples_saved = 0
 
             try: 
 
                 for elt in objs: 
-                    #res = wrapper.save(endpoint="sample", obj=elt)
-                    L = Logger.from_pickle(log_data)
 
-
-                    qc_params = {
-                        "instrument": dropdown_select_inst_value,
-                        "data_type": qc_type,
-                        "data_format": upload_type,
-                        "submit_button_clicks": n_clicks,
-                    }
-                    
                     res = L.logthis(
                         api_call=wrapper.save,
                         endpoint="sample",
                         obj=elt,
                         qc_params=qc_params,
-                        make_log_api_call = True,
-                        )
+                        make_log_api_call = False,
+                    )
 
+                    n_samples_saved += 1
 
-                    print(res)
-                    n_sammples_saved += 1
-
+                L.flush_logs()
 
             except Exception as e:
                 print(e)
@@ -270,25 +271,31 @@ def submit(n_clicks, qc_data, token, dropdown_select_inst_value, upload_type, qc
                     html.P("Please try again. If you continue to encounter issues, please submit a bug report using the bug report tab."),
                     html.P(f"Internal Traceback: {e}")
                 ]
-                return [], False, alert_children, True, [], False
+
+                L.log_operation("upload", "Upload failed", qc_params=qc_params, make_log_api_call=True)
+
+                return [], False, alert_children, True, [], False, L.to_pickle()
 
             success_alert_children = [
                 html.H3("Upload Successful!"),
-                html.P([html.B(f"{n_sammples_saved}"), " samples were uploaded to Bfabric."])
+                html.P([html.B(f"{n_samples_saved}"), " samples were uploaded to Bfabric."])
             ]
-            return success_alert_children, True, [], False, [], False
+            return success_alert_children, True, [], False, [], False, L.to_pickle()
         else: 
-            return [], False, [], False, [], False
+            return [], False, [], False, [], False, L.to_pickle()
 
     except Exception as e: 
-    # else:
+
         print(e)
         alert_children = [
             html.H3("Upload Failed."),
             html.P("Please try again. If you continue to encounter issues, please submit a bug report using the bug report tab."),
             html.P(f"Internal Traceback: {e}")
         ]
-        return [], False, alert_children, True
+
+        L.log_operation("upload", "Upload failed", qc_params=qc_params, make_log_api_call=True)
+
+        return [], False, alert_children, True, [], False, L.to_pickle()
             
 
 @app.callback(
