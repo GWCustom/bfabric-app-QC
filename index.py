@@ -265,14 +265,14 @@ def submit(n_clicks, qc_data, token, dropdown_select_inst_value, upload_type, qc
                 L.flush_logs()
 
             except Exception as e:
-                print(e)
+                
                 alert_children = [
                     html.H3("Upload Failed."),
                     html.P("Please try again. If you continue to encounter issues, please submit a bug report using the bug report tab."),
                     html.P(f"Internal Traceback: {e}")
                 ]
 
-                L.log_operation("upload", "Upload failed", qc_params=qc_params, make_log_api_call=True)
+                L.log_operation("upload", f"Upload failed with exception: {e}", qc_params=qc_params, make_log_api_call=True)
 
                 return [], False, alert_children, True, [], False, L.to_pickle()
 
@@ -286,7 +286,6 @@ def submit(n_clicks, qc_data, token, dropdown_select_inst_value, upload_type, qc
 
     except Exception as e: 
 
-        print(e)
         alert_children = [
             html.H3("Upload Failed."),
             html.P("Please try again. If you continue to encounter issues, please submit a bug report using the bug report tab."),
