@@ -39,21 +39,21 @@ class Logger:
         # Decode the base64 string back to bytes and then unpickle
         return pickle.loads(base64.b64decode(pickle_object.get("data").encode('utf-8')))
 
-    def log_operation(self, operation: str, message: str, qc_params, make_log_api_call: bool = True):
+    def log_operation(self, operation: str, message: str, params, flush_logs: bool = True):
         """
-        Log an operation either locally (if make_log_api_call=False) or flush to the backend.
+        Log an operation either locally (if flush_logs=False) or flush to the backend.
         """
-        #log_entry = f"[{str(dt.now())}] USER: {self.username} | {operation.upper()} - {qc_params} - {message}"
+        #log_entry = f"[{str(dt.now())}] USER: {self.username} | {operation.upper()} - {params} - {message}"
 
         log_entry = (
             f"[{dt.now().strftime('%Y-%m-%d %H:%M:%S')}] "  # Timestamp
             f"USER: {self.username} | {operation.upper()} | "  # User and operation
             f"{message} | "                      # QC Parameters
-            f"{qc_params}"                              # Message
+            f"{params}"                              # Message
             )
 
 
-        if make_log_api_call:
+        if flush_logs:
             self.logs.append(log_entry)  # Temporarily append for flushing
             self.flush_logs()  # Flush all logs, including the new one
         else:
@@ -73,7 +73,7 @@ class Logger:
         except Exception as e:
             print(f"Failed to save log to B-Fabric: {e}")
 
-    def logthis(self, api_call: callable, *args, qc_params , make_log_api_call: bool = True, **kwargs) -> any:
+    def logthis(self, api_call: callable, *args, params , flush_logs: bool = True, **kwargs) -> any:
         """
         Generic logging function to wrap any API call using a Logger instance.
         """
@@ -86,6 +86,6 @@ class Logger:
         result = api_call(*args, **kwargs)
 
         # Log the operation
-        self.log_operation(api_call.__name__, log_message, qc_params, make_log_api_call=make_log_api_call)
+        self.log_operation(api_call.__name__, log_message, params, flush_logs=flush_logs)
 
         return result

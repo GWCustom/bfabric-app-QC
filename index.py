@@ -87,24 +87,9 @@ app.layout = html.Div(
         dcc.Store(id='entity', storage_type='session'), # Where we store the entity data retrieved from bfabric
         dcc.Store(id='token_data', storage_type='session'), # Where we store the token auth response
         dcc.Store(id='qc-data', storage_type='session'),
-        dcc.Store(id='log', storage_type='session'), # Where we store the log data
-        dcc.Store(id='dummy-output', storage_type='memory'), # Dummy output for logger
         components.modal_submit,
     ],style={"width":"100vw", "overflow-x":"hidden", "overflow-y":"scroll"}
 )
-
-
-#Callback to safe the log data in the dcc store
-@app.callback(
-    Output('dummy-output', 'data'),#dummy output!
-    [Input('log', 'data')]
-)
-def process_data(log):
-    if log:
-        Logger.from_pickle(log)
-        return None  # Dummy output, not used
-
-
 
 @app.callback(
     [
@@ -118,15 +103,19 @@ def process_data(log):
         State("token", "data"),
         State("entity", "data"),
         State("bug-description", "value"),
-        State("log", "data")
     ]
 )
-def submit_bug_report(n_clicks, token, entity_data, bug_description, log_data):
+def submit_bug_report(n_clicks, token, entity_data, bug_description):
 
     if token: 
         token_data = json.loads(auth_utils.token_to_data(token))
     else:
         token_data = ""
+
+    jobId = token_data.get('jobId', None)
+    username = token_data.get("user_data", "None")
+
+    L = Logger(jobid=jobId, username=username)
 
     if n_clicks:
         try:
@@ -134,15 +123,16 @@ def submit_bug_report(n_clicks, token, entity_data, bug_description, log_data):
                 token_data=token_data,
                 entity_data=entity_data,
                 description=bug_description,
-                log_data = log_data
             )
 
             if sending_result:
+                L.log_operation("bug_report", bug_description, params=None, flush_logs=True)
                 return True, False
             else:
+                L.log_operation("bug_report", "Failed to submit bug report!", params=None, flush_logs=True)
                 return False, True
         except:
-            print("sending_results")
+            L.log_operation("bug_report", "Failed to submit bug report!", params=None, flush_logs=True)
             return False, True
 
     return False, False
@@ -156,7 +146,6 @@ def submit_bug_report(n_clicks, token, entity_data, bug_description, log_data):
         Output("alert-upload-error", "is_open"),
         Output("alert-no-data", "children"),
         Output("alert-no-data", "is_open"),
-        Output("log", "data"),
     ],
     [
         Input("submit-val", "n_clicks"),
@@ -167,10 +156,12 @@ def submit_bug_report(n_clicks, token, entity_data, bug_description, log_data):
         State("dropdown-select-inst", "value"),
         State("upload-type", "value"),
         State("qc-type", "value"),
-        State("log", "data"),
-    ]
+        State('token_data', 'data')
+        
+    ],
+    prevent_initial_call=True
 )
-def submit(n_clicks, qc_data, token, dropdown_select_inst_value, upload_type, qc_type, log_data):
+def submit(n_clicks, qc_data, token, dropdown_select_inst_value, upload_type, qc_type, token_data):
 
     qc_types = {
         "Frag":"Agilent Fragment Analyzer",
@@ -204,21 +195,28 @@ def submit(n_clicks, qc_data, token, dropdown_select_inst_value, upload_type, qc
         "Well":"qualitycontroltype"
     }
 
-    qc_params = {
+    params = {
         "instrument": dropdown_select_inst_value,
         "data_type": qc_type,
         "data_format": upload_type,
         "submit_button_clicks": n_clicks,
     }
 
-    L = Logger.from_pickle(log_data)
+    #Initialize logger
+    jobId = token_data.get('jobId', None)
+    username = token_data.get("user_data", "None")
+
+    L = Logger(jobid=jobId, username=username)
 
     try:
+
         button_clicked = ctx.triggered_id
         if button_clicked == "submit-val":
             
-            L.log_operation("upload", "User clicked submit button", qc_params=qc_params, make_log_api_call=False)
+            L.log_operation("upload", "User clicked submit button", params=params, flush_logs=False)
 
+
+            # Check if data was uploaded does not work! Even if no data was uploaded, the qc_data is not None!
             if qc_data:
                 data = json.loads(qc_data)
             else:
@@ -226,7 +224,10 @@ def submit(n_clicks, qc_data, token, dropdown_select_inst_value, upload_type, qc
                     html.H3("You haven't uploaded any data."),
                     html.P("Please upload data before submitting.")
                 ]
-                return [], False, [], False, no_data_alert, True, log_data
+
+                L.log_operation("Error”, ”No data was uploaded before the submission", params=params, flush_logs=True)
+
+                return [], False, [], False, no_data_alert, True
         
             objs = []
 
@@ -252,12 +253,12 @@ def submit(n_clicks, qc_data, token, dropdown_select_inst_value, upload_type, qc
 
                 for elt in objs: 
 
-                    res = L.logthis(
+                    L.logthis(
                         api_call=wrapper.save,
                         endpoint="sample",
                         obj=elt,
-                        qc_params=qc_params,
-                        make_log_api_call = False,
+                        params=params,
+                        flush_logs = False,
                     )
 
                     n_samples_saved += 1
@@ -272,29 +273,33 @@ def submit(n_clicks, qc_data, token, dropdown_select_inst_value, upload_type, qc
                     html.P(f"Internal Traceback: {e}")
                 ]
 
-                L.log_operation("upload", f"Upload failed with exception: {e}", qc_params=qc_params, make_log_api_call=True)
+                L.log_operation("upload", f"Upload failed with exception: {e}", params=params, flush_logs=True)
 
-                return [], False, alert_children, True, [], False, L.to_pickle()
+                return [], False, alert_children, True, [], False
 
             success_alert_children = [
                 html.H3("Upload Successful!"),
                 html.P([html.B(f"{n_samples_saved}"), " samples were uploaded to Bfabric."])
             ]
-            return success_alert_children, True, [], False, [], False, L.to_pickle()
-        else: 
-            return [], False, [], False, [], False, L.to_pickle()
+
+            L.log_operation("Upload Successful!", "samples were uploaded to Bfabric", params=params, flush_logs=True)
+            return success_alert_children, True, [], False, [], False
+        
+        else:
+            # to do: adjust log message
+            L.log_operation("upload", f"Upload failed with exception: {e}", params=params, flush_logs=True) 
+            return [], False, [], False, [], False
 
     except Exception as e: 
-
         alert_children = [
             html.H3("Upload Failed."),
             html.P("Please try again. If you continue to encounter issues, please submit a bug report using the bug report tab."),
             html.P(f"Internal Traceback: {e}")
         ]
 
-        L.log_operation("upload", "Upload failed", qc_params=qc_params, make_log_api_call=True)
+        L.log_operation("upload", f"Upload failed with exception: {e}", params=params, flush_logs=True)
 
-        return [], False, alert_children, True, [], False, L.to_pickle()
+        return [], False, alert_children, True, [], False
             
 
 @app.callback(
@@ -319,7 +324,6 @@ def toggle_modal(n1, n2, is_open):
         Output('submit-val-intro', 'disabled'),
         Output('alert-not-qc-plate', 'children'),
         Output('alert-not-qc-plate', 'is_open'),
-        Output('log', 'data')
     ],
     [
         Input('url', 'search'),
@@ -335,29 +339,29 @@ def display_page(url_params, dropdown_select_inst_value, qc_type, upload_type):
     base_title = ""
 
     if not url_params:
-        return None, None, None, components.no_auth, base_title, True, True, True, [], False, None
+        return None, None, None, components.no_auth, base_title, True, True, True, [], False
     
     token = "".join(url_params.split('token=')[1:])
     tdata_raw = auth_utils.token_to_data(token)
     
     if tdata_raw:
         if tdata_raw == "EXPIRED":
-            return None, None, None, components.expired, base_title, True, True, True, [], False, None
+            return None, None, None, components.expired, base_title, True, True, True, [], False
 
         else: 
             tdata = json.loads(tdata_raw)
     else:
-        return None, None, None, components.no_auth, base_title, True, True, True, [], False, None
+        return None, None, None, components.no_auth, base_title, True, True, True, [], False
     
     if tdata:
 
-        qc_params = {
+        params = {
             "instrument": dropdown_select_inst_value,
             "data_type": qc_type,
             "data_format": upload_type,
         }
 
-        entity_data_json, logger_instance = auth_utils.entity_data(tdata, qc_params)
+        entity_data_json, logger_instance = auth_utils.entity_data(tdata, params)
         entity_data = json.loads(entity_data_json)
         page_title = f"{base_title}{tdata['entityClass_data']} {tdata['entity_id_data']}: {entity_data['name']}" if tdata else "Bfabric App Interface"
 
@@ -366,22 +370,22 @@ def display_page(url_params, dropdown_select_inst_value, qc_type, upload_type):
                 html.H3("This plate is not a Quality Control plate."),
                 html.P("Please make sure you're using the correct plate type, and try again.")
             ]
-            return token, tdata, entity_data, components.not_qc_plate, page_title, True, True, True, alert, True, None
+            return token, tdata, entity_data, components.not_qc_plate, page_title, True, True, True, alert, True
 
         
         if not tdata:
-            return token, None, None, components.no_auth, page_title, True, True, True, [], False, None
+            return token, None, None, components.no_auth, page_title, True, True, True, [], False
         
         elif not entity_data:
-            return token, None, None, components.no_entity, page_title, True, True, True, [], False, None
+            return token, None, None, components.no_entity, page_title, True, True, True, [], False
         
         else:
             if not DEV:
-                return token, tdata, entity_data, components.auth, page_title, False, False, False, [], False, logger_instance.to_pickle()
+                return token, tdata, entity_data, components.auth, page_title, False, False, False, [], False
             else: 
-                return token, tdata, entity_data, components.dev, page_title, True, True, True, [], False, None
+                return token, tdata, entity_data, components.dev, page_title, True, True, True, [], False
     else: 
-        return None, None, None, components.no_auth, base_title, True, True, True, [], False, None
+        return None, None, None, components.no_auth, base_title, True, True, True, [], False
 
 
 @app.callback(Output('next-card', 'children'),

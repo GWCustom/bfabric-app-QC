@@ -72,7 +72,7 @@ def token_response_to_bfabric(token_response: dict) -> str:
 
 
     
-def entity_data(token_data: dict, qc_params) -> str: 
+def entity_data(token_data: dict, params) -> str: 
 
     """
     This function takes in a token from bfabric, and returns the entity data for the token.
@@ -107,8 +107,8 @@ def entity_data(token_data: dict, qc_params) -> str:
             endpoint=endpoint,
             obj={"id": entity_id},
             max_results=None,
-            qc_params=qc_params,
-            make_log_api_call = True
+            params=params,
+            flush_logs = True
         )[0]
 
         if entity_data_dict:
@@ -148,7 +148,7 @@ def entity_data(token_data: dict, qc_params) -> str:
 
 
 
-def send_bug_report(token_data, entity_data, description, log_data):
+def send_bug_report(token_data, entity_data, description):
 
     mail_string = f"""
     BUG REPORT FROM QC-UPLOADER
@@ -170,8 +170,5 @@ def send_bug_report(token_data, entity_data, description, log_data):
     print(mail)
 
     os.system(mail)
-
-    L = Logger.from_pickle(log_data)
-    L.log_operation("bug_report", description, qc_params=None, make_log_api_call=True)
 
     return True
