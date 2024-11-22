@@ -164,10 +164,12 @@ def submit_bug_report(n_clicks, token, entity_data, bug_description, log_data):
         State("qc-data", "data"),
         State("token", "data"),
         State("dropdown-select-inst", "value"),
+        State("upload-type", "value"),
+        State("qc-type", "value"),
         State("log", "data"),
     ]
 )
-def submit(n_clicks, qc_data, token, qc_type, log_data):
+def submit(n_clicks, qc_data, token, dropdown_select_inst_value, upload_type, qc_type, log_data):
 
     qc_types = {
         "Frag":"Agilent Fragment Analyzer",
@@ -242,10 +244,10 @@ def submit(n_clicks, qc_data, token, qc_type, log_data):
 
 
                     qc_params = {
-                        "qc_type": qc_type,
-                        "instrument": "dropdown-select-inst",  # Replace with the actual value
-                        "upload_type": "upload-type",  # Replace with the actual value
-                        "mapped_parameters": AD if qc_type == "RNA" else rnaAD,
+                        "instrument": dropdown_select_inst_value,
+                        "data_type": qc_type,
+                        "data_format": upload_type,
+                        "submit_button_clicks": n_clicks,
                     }
                     
                     res = L.logthis(
@@ -315,9 +317,14 @@ def toggle_modal(n1, n2, is_open):
     ],
     [
         Input('url', 'search'),
+    ],
+    [
+        State("dropdown-select-inst", "value"),
+        State("upload-type", "value"),
+        State("qc-type", "value"),
     ]
 )
-def display_page(url_params):
+def display_page(url_params, dropdown_select_inst_value, qc_type, upload_type):
     
     base_title = ""
 
@@ -337,7 +344,14 @@ def display_page(url_params):
         return None, None, None, components.no_auth, base_title, True, True, True, [], False, None
     
     if tdata:
-        entity_data_json, logger_instance = auth_utils.entity_data(tdata)
+
+        qc_params = {
+            "instrument": dropdown_select_inst_value,
+            "data_type": qc_type,
+            "data_format": upload_type,
+        }
+
+        entity_data_json, logger_instance = auth_utils.entity_data(tdata, qc_params)
         entity_data = json.loads(entity_data_json)
         page_title = f"{base_title}{tdata['entityClass_data']} {tdata['entity_id_data']}: {entity_data['name']}" if tdata else "Bfabric App Interface"
 

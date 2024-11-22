@@ -72,7 +72,7 @@ def token_response_to_bfabric(token_response: dict) -> str:
 
 
     
-def entity_data(token_data: dict) -> str: 
+def entity_data(token_data: dict, qc_params) -> str: 
 
     """
     This function takes in a token from bfabric, and returns the entity data for the token.
@@ -97,7 +97,6 @@ def entity_data(token_data: dict) -> str:
     entity_id = token_data.get('entity_id_data', None)
     jobId = token_data.get('jobId', None)
     username = token_data.get("user_data", "None")
-    application_params_data = token_data.get("application_params_data", None)
 
     if wrapper and entity_class and endpoint and entity_id:
 
@@ -108,7 +107,7 @@ def entity_data(token_data: dict) -> str:
             endpoint=endpoint,
             obj={"id": entity_id},
             max_results=None,
-            qc_params=application_params_data,
+            qc_params=qc_params,
             make_log_api_call = True
         )[0]
 
