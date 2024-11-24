@@ -118,6 +118,7 @@ def submit_bug_report(n_clicks, token, entity_data, bug_description):
     L = Logger(jobid=jobId, username=username)
 
     if n_clicks:
+        L.log_operation("bug report", "Initiating bug report submission process.", params=None, flush_logs=False)
         try:
             sending_result = auth_utils.send_bug_report(
                 token_data=token_data,
@@ -126,13 +127,13 @@ def submit_bug_report(n_clicks, token, entity_data, bug_description):
             )
 
             if sending_result:
-                L.log_operation("bug_report", bug_description, params=None, flush_logs=True)
+                L.log_operation("bug report", f"Bug report successfully submitted. Description: {bug_description}", params=None, flush_logs=True)
                 return True, False
             else:
-                L.log_operation("bug_report", "Failed to submit bug report!", params=None, flush_logs=True)
+                L.log_operation("bug report", "Failed to submit bug report!", params=None, flush_logs=True)
                 return False, True
         except:
-            L.log_operation("bug_report", "Failed to submit bug report!", params=None, flush_logs=True)
+            L.log_operation("bug report", "Failed to submit bug report!", params=None, flush_logs=True)
             return False, True
 
     return False, False
@@ -361,7 +362,7 @@ def display_page(url_params, dropdown_select_inst_value, qc_type, upload_type):
             "data_format": upload_type,
         }
 
-        entity_data_json, logger_instance = auth_utils.entity_data(tdata, params)
+        entity_data_json = auth_utils.entity_data(tdata, params)
         entity_data = json.loads(entity_data_json)
         page_title = f"{base_title}{tdata['entityClass_data']} {tdata['entity_id_data']}: {entity_data['name']}" if tdata else "Bfabric App Interface"
 

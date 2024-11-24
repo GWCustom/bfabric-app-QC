@@ -42,22 +42,31 @@ class Logger:
     def log_operation(self, operation: str, message: str, params, flush_logs: bool = True):
         """
         Log an operation either locally (if flush_logs=False) or flush to the backend.
+        Creates well-structured, readable log entries.
         """
-        #log_entry = f"[{str(dt.now())}] USER: {self.username} | {operation.upper()} - {params} - {message}"
+        # Define the timestamp format
+        timestamp = dt.now().strftime('%Y-%m-%d %H:%M:%S')
 
+        # Build the base log entry
         log_entry = (
-            f"[{dt.now().strftime('%Y-%m-%d %H:%M:%S')}] "  # Timestamp
-            f"USER: {self.username} | {operation.upper()} | "  # User and operation
-            f"{message} | "                      # QC Parameters
-            f"{params}"                              # Message
-            )
+            f"[{timestamp}] "      
+            f"USER: {self.username} | "
+            f"OPERATION: {operation.upper()} | "
+            f"MESSAGE: {message}"
+        )
 
+        # Add parameters if provided
+        if params is not None:
+            log_entry += f" | PARAMETERS: {params}"
 
+        # Flush or store the log entry
         if flush_logs:
             self.logs.append(log_entry)  # Temporarily append for flushing
             self.flush_logs()  # Flush all logs, including the new one
         else:
             self.logs.append(log_entry)  # Append to local logs
+
+
 
     def flush_logs(self):
         """
