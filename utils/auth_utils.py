@@ -148,12 +148,6 @@ def entity_data(token_data: dict, params) -> str:
             print("entity_data_dict is empty or None")
             return None
     else:
-        L.log_operation(
-            "entity_data",
-            "Invalid input or missing required entity information. Ensure the token contains necessary details.",
-            params=None,
-            flush_logs=True
-        )
         print("Invalid input or entity information")
         return None
 

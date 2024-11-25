@@ -103,7 +103,8 @@ app.layout = html.Div(
         State("token", "data"),
         State("entity", "data"),
         State("bug-description", "value"),
-    ]
+    ],
+    prevent_initial_call=True
 )
 def submit_bug_report(n_clicks, token, entity_data, bug_description):
 
@@ -127,7 +128,7 @@ def submit_bug_report(n_clicks, token, entity_data, bug_description):
             )
 
             if sending_result:
-                L.log_operation("bug report", f"Bug report successfully submitted. Description: {bug_description}", params=None, flush_logs=True)
+                L.log_operation("bug report", f"Bug report successfully submitted. | DESCRIPTION: {bug_description}", params=None, flush_logs=True)
                 return True, False
             else:
                 L.log_operation("bug report", "Failed to submit bug report!", params=None, flush_logs=True)
@@ -209,26 +210,15 @@ def submit(n_clicks, qc_data, token, dropdown_select_inst_value, upload_type, qc
 
     L = Logger(jobid=jobId, username=username)
 
-    try:
+    button_clicked = ctx.triggered_id
+    if button_clicked == "submit-val":
+        
+        L.log_operation("upload", "User clicked submit button", params=params, flush_logs=False)
 
-        button_clicked = ctx.triggered_id
-        if button_clicked == "submit-val":
-            
-            L.log_operation("upload", "User clicked submit button", params=params, flush_logs=False)
-
-
-            # Check if data was uploaded does not work! Even if no data was uploaded, the qc_data is not None!
-            if qc_data:
-                data = json.loads(qc_data)
-            else:
-                no_data_alert = [
-                    html.H3("You haven't uploaded any data."),
-                    html.P("Please upload data before submitting.")
-                ]
-
-                L.log_operation("Error”, ”No data was uploaded before the submission", params=params, flush_logs=True)
-
-                return [], False, [], False, no_data_alert, True
+        print(qc_data)
+        # Check if data was uploaded does not work! Even if no data was uploaded, the qc_data is not None!
+        if qc_data:
+            data = json.loads(qc_data)
         
             objs = []
 
@@ -285,23 +275,26 @@ def submit(n_clicks, qc_data, token, dropdown_select_inst_value, upload_type, qc
 
             L.log_operation("Upload Successful!", "samples were uploaded to Bfabric", params=params, flush_logs=True)
             return success_alert_children, True, [], False, [], False
-        
+   
         else:
-            # to do: adjust log message
-            L.log_operation("upload", f"Upload failed with exception: {e}", params=params, flush_logs=True) 
-            return [], False, [], False, [], False
+            no_data_alert = [
+                html.H3("You haven't uploaded any data."),
+                html.P("Please upload data before submitting.")
+            ]
 
-    except Exception as e: 
+            L.log_operation("Error", "No data was uploaded before the submission", params=params, flush_logs=True)
+
+            return [], False, [], False, no_data_alert, True
+        
+    else:
         alert_children = [
-            html.H3("Upload Failed."),
-            html.P("Please try again. If you continue to encounter issues, please submit a bug report using the bug report tab."),
-            html.P(f"Internal Traceback: {e}")
+            html.H3("Unexpected Error."),
+            html.P("Please try again. If you continue to encounter issues, please submit a bug report using the bug report tab.")
         ]
 
-        L.log_operation("upload", f"Upload failed with exception: {e}", params=params, flush_logs=True)
-
-        return [], False, alert_children, True, [], False
-            
+        L.log_operation("upload", f"Upload failed with exception: {e}", params=params, flush_logs=True) 
+        return [], False, alert_children, True, [], False    
+         
 
 @app.callback(
     Output("modal", "is_open"),
