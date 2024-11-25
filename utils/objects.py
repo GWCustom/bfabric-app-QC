@@ -39,7 +39,7 @@ class Logger:
         # Decode the base64 string back to bytes and then unpickle
         return pickle.loads(base64.b64decode(pickle_object.get("data").encode('utf-8')))
 
-    def log_operation(self, operation: str, message: str, params, flush_logs: bool = True):
+    def log_operation(self, operation: str, message: str, params = None, flush_logs: bool = True):
         """
         Log an operation either locally (if flush_logs=False) or flush to the backend.
         Creates well-structured, readable log entries.
@@ -82,7 +82,7 @@ class Logger:
         except Exception as e:
             print(f"Failed to save log to B-Fabric: {e}")
 
-    def logthis(self, api_call: callable, *args, params , flush_logs: bool = True, **kwargs) -> any:
+    def logthis(self, api_call: callable, *args, params=None , flush_logs: bool = True, **kwargs) -> any:
         """
         Generic logging function to wrap any API call using a Logger instance.
         """
