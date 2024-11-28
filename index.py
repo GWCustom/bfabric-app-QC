@@ -215,7 +215,6 @@ def submit(n_clicks, qc_data, token, dropdown_select_inst_value, upload_type, qc
         
         L.log_operation("upload", "User clicked submit button", params=params, flush_logs=False)
 
-        print(qc_data)
         # Check if data was uploaded does not work! Even if no data was uploaded, the qc_data is not None!
         if qc_data:
             data = json.loads(qc_data)
@@ -664,24 +663,23 @@ def generate_qc_dropdown(obj):
 
 @app.callback(
     output=[
-        # Output('div-graphs-qc','children'),
-        Output('auth-div','children'),
-        Output('qc-data','data'),
-        Output('alert-n-samples','children'),
-        Output('alert-n-samples','is_open'),
-        Output('alert-merge-error','children'),
-        Output('alert-merge-error','is_open'),
+        Output('auth-div', 'children'),
+        Output('qc-data', 'data'),
+        Output('alert-n-samples', 'children'),
+        Output('alert-n-samples', 'is_open'),
+        Output('alert-merge-error', 'children'),
+        Output('alert-merge-error', 'is_open'),
     ],
-    inputs = [
+    inputs=[
         Input('drag-drop', 'contents')
     ],
     state=[
-        State('dropdown-select-inst','value'),
-        State('token','data'),
-        State('qc-type','value'),
-        State('upload-type','value'),
-        State('entity','data')
-    ]
+        State('dropdown-select-inst', 'value'),
+        State('token', 'data'),
+        State('qc-type', 'value'),
+        State('upload-type', 'value'),
+        State('entity', 'data')
+    ],
 )
 def generate_graph(fl, instrument, token, qcType, uploadType, entity_data): 
 
@@ -690,7 +688,7 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
     alert_merge_open = False
     alert_n_samples_open = False
 
-    print("INSTRIMENT")
+    print("INSTRUMENT")
     print(instrument)
 
     print("QC TYPE")
@@ -700,12 +698,12 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
     print(uploadType)
 
     try:
-
+        # Validate token
         token_data = auth_utils.token_to_data(token)
         if token_data is None:
             return components.no_auth, None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open
+        L = Logger(jobid=json.loads(token_data)['jobId'], username=json.loads(token_data)['user_data'])
         plate = json.loads(token_data)['entity_id_data']
-
         send = html.Div()
         title = ""
 
@@ -714,11 +712,12 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
         D.table_type = uploadType
         if instrument != "Frag":
             D.TS_type = qcType
-        elif qcType is None: 
+        elif qcType is None:
             pass
         else:
-            D.TS_type = "FRAG_"+qcType
+            D.TS_type = "FRAG_" + qcType
 
+        # Handle uploaded files
         if type(None) != type(fl):
             D.upload_dataset = pc(fl)
 
@@ -728,29 +727,28 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
         if type(None) != type(plate) and type(None) != type(fl):
             D.merged()
 
-            # send = html.Div([
             df = D.merged_dataset
             send = dash_table.DataTable(
-                    df.to_dict("records"),
-                    [{"name": i, "id": i} for i in df.columns],
-                    style_data_conditional=[
-                        {
-                            'if': {'row_index': 'odd'},
-                            'backgroundColor': 'rgb(220, 220, 220)',
-                        }
-                    ],
-                    style_cell={'padding':'10px'},
-                    style_data={
-                        'color': 'black',
-                        'backgroundColor': 'white'
-                    },
-                    style_header={
-                        'backgroundColor': 'rgb(210, 210, 210)',
-                        'color': 'black',
-                        'fontWeight': 'bold'
+                df.to_dict("records"),
+                [{"name": i, "id": i} for i in df.columns],
+                style_data_conditional=[
+                    {
+                        'if': {'row_index': 'odd'},
+                        'backgroundColor': 'rgb(220, 220, 220)',
                     }
-                )
-            
+                ],
+                style_cell={'padding': '10px'},
+                style_data={
+                    'color': 'black',
+                    'backgroundColor': 'white'
+                },
+                style_header={
+                    'backgroundColor': 'rgb(210, 210, 210)',
+                    'color': 'black',
+                    'fontWeight': 'bold'
+                }
+            )
+
             if len(D.bfabric_dataset) != len(D.upload_dataset):
                 alert_n_samples_title = [
                     html.H3("Warning: N Samples in your file ≠ N Samples on the bfabric plate."),
@@ -758,46 +756,47 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
                     html.P([f"Number of samples in the file you uploaded: ", html.B(f"{len(D.upload_dataset)}")]),
                     html.P([f"Number of samples assigned to the plate in Bfabric: ", html.B(f"{len(D.bfabric_dataset)}")])
                 ]
+                L.log_operation("warning", "Sample mismatch detected during merge", params=None, flush_logs=True)
                 alert_n_samples_open = True
             title = "Merged Data"
 
         elif type(None) != type(plate) and type(None) == type(fl):
             df = D.bfabric_dataset
             send = dash_table.DataTable(
-                    df.to_dict("records"),
-                    [{"name": i, "id": i} for i in df.columns],
-                    style_data_conditional=[
-                        {
-                            'if': {'row_index': 'odd'},
-                            'backgroundColor': 'rgb(220, 220, 220)',
-                        }
-                    ],
-                    style_cell={'padding':'10px'},
-                    style_data={
-                        'color': 'black',
-                        'backgroundColor': 'white'
-                    },
-                    style_header={
-                        'backgroundColor': 'rgb(210, 210, 210)',
-                        'color': 'black',
-                        'fontWeight': 'bold'
+                df.to_dict("records"),
+                [{"name": i, "id": i} for i in df.columns],
+                style_data_conditional=[
+                    {
+                        'if': {'row_index': 'odd'},
+                        'backgroundColor': 'rgb(220, 220, 220)',
                     }
-                )
+                ],
+                style_cell={'padding': '10px'},
+                style_data={
+                    'color': 'black',
+                    'backgroundColor': 'white'
+                },
+                style_header={
+                    'backgroundColor': 'rgb(210, 210, 210)',
+                    'color': 'black',
+                    'fontWeight': 'bold'
+                }
+            )
             title = "Bfabric Data"
-            
+
         div_send = html.Div(
             children=[
                 html.H3(title),
                 html.Br(),
                 send
             ],
-            style={"margin-left":"2vw", "margin-right":"10vw", "font-size":"20px"}
+            style={"margin-left": "2vw", "margin-right": "10vw", "font-size": "20px"}
 
         )
-        
+
         return div_send, D.json, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open
 
-    except Exception as e: 
+    except Exception as e:
 
         print("ERROR")
         print(e)
@@ -809,7 +808,11 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
         ]
         alert_merge_open = True
 
+        # Log merge failure
+        L.log_operation("merge","There was an error merging your file with the plate data in Bfabric. " + f"Merge failed with exception: {e}", params=None, flush_logs=True)
+
         return html.Div(), None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open
+
 
 if __name__ == '__main__':
     app.run_server(debug=True, port=PORT, host=HOST)
