@@ -815,4 +815,4 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True, port=PORT, host=HOST)
+    app.run_server(debug=False, port=PORT, host=HOST)
