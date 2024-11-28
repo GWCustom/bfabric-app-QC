@@ -669,6 +669,7 @@ def generate_qc_dropdown(obj):
         Output('alert-n-samples', 'is_open'),
         Output('alert-merge-error', 'children'),
         Output('alert-merge-error', 'is_open'),
+        Output('alert-merge-success', 'children'),
         Output('alert-merge-success', 'is_open'),
     ],
     inputs=[
@@ -686,6 +687,7 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
 
     alert_n_samples_title = [html.P("")]
     alert_merge_title = [html.P("")]
+    merge_success_title = [html.P("")]
     alert_merge_open = False
     alert_n_samples_open = False
 
@@ -705,7 +707,7 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
         token_data = auth_utils.token_to_data(token)
 
         if not token_data:
-            return components.no_auth, None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, merge_success_open
+            return components.no_auth, None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, merge_success_title, merge_success_open
             
         L = Logger(jobid=json.loads(token_data)['jobId'], username=json.loads(token_data)['user_data'])
         plate = json.loads(token_data)['entity_id_data']
@@ -765,6 +767,11 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
                 alert_n_samples_open = True
             title = "Merged Data"
             merge_success_open = True
+            merge_success_title = [
+                html.H3("Data Merged Successfully"),
+                html.P("The data has been merged with the plate information in Bfabric without any detected errors.")
+            ]
+            L.log_operation("Merge success", "The data file was successfully merged with the Bfabric plate data.", params=None, flush_logs=True)
 
         elif type(None) != type(plate) and type(None) == type(fl):
             df = D.bfabric_dataset
@@ -800,7 +807,7 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
 
         )
 
-        return div_send, D.json, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, merge_success_open
+        return div_send, D.json, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, merge_success_title, merge_success_open
 
     except Exception as e:
 
@@ -817,7 +824,7 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
         # Log merge failure
         L.log_operation("merge","There was an error merging your file with the plate data in Bfabric. " + f"Merge failed with exception: {e}", params=None, flush_logs=True)
 
-        return html.Div(), None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, merge_success_open
+        return html.Div(), None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, merge_success_title, merge_success_open
 
 
 if __name__ == '__main__':
