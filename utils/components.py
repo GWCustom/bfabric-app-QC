@@ -300,6 +300,14 @@ alerts = [
     ),
     dbc.Alert(
         children=[],
+        id="alert-merge-success",
+        dismissable=True,
+        is_open=False,
+        color="success",
+        style={"max-width":"80vw", "margin":"10px"}
+    ),
+    dbc.Alert(
+        children=[],
         id="alert-not-qc-plate",
         dismissable=True,
         is_open=False,
