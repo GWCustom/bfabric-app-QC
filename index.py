@@ -228,7 +228,7 @@ def submit(n_clicks, qc_data, token, dropdown_select_inst_value, upload_type, qc
                 for i in range(len(data['columns'])):
                     key = data['columns'][i]
                     if key == "Well":
-                        tmp_obj[rnaAD[key]] = qc_types[qc_type]
+                        tmp_obj[rnaAD[key]] = qc_types[dropdown_select_inst_value]
                     else: 
                         tmp_obj[rnaAD[key]] = str(elt[i])
                 # print(tmp_obj)
