@@ -115,8 +115,12 @@ def submit_bug_report(n_clicks, token, entity_data, bug_description):
 
     jobId = token_data.get('jobId', None)
     username = token_data.get("user_data", "None")
+    environment = token_data.get("environment", "None")
 
-    L = Logger(jobid=jobId, username=username)
+    L = Logger(
+        jobid=jobId,
+        username=username,
+        environment= environment)
 
     if n_clicks:
         L.log_operation("bug report", "Initiating bug report submission process.", params=None, flush_logs=False)
@@ -207,8 +211,12 @@ def submit(n_clicks, qc_data, token, dropdown_select_inst_value, upload_type, qc
     #Initialize logger
     jobId = token_data.get('jobId', None)
     username = token_data.get("user_data", "None")
+    environment = token_data.get("environment", "None")
 
-    L = Logger(jobid=jobId, username=username)
+    L = Logger(
+        jobid=jobId,
+        username=username,
+        environment= environment)
 
     button_clicked = ctx.triggered_id
     if button_clicked == "submit-val":
@@ -709,7 +717,12 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
         if not token_data:
             return components.no_auth, None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, merge_success_title, merge_success_open
             
-        L = Logger(jobid=json.loads(token_data)['jobId'], username=json.loads(token_data)['user_data'])
+        L = Logger(
+            jobid=json.loads(token_data)['jobId'],
+            username=json.loads(token_data)['user_data'],
+            environment=json.loads(token_data)['environment']
+        )
+
         plate = json.loads(token_data)['entity_id_data']
         send = html.Div()
         title = ""
