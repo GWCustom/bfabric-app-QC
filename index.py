@@ -613,6 +613,8 @@ def generate_qc_dropdown(obj):
         Output('alert-n-samples','is_open'),
         Output('alert-merge-error','children'),
         Output('alert-merge-error','is_open'),
+        Output('alert-missing-data', 'children'),
+        Output('alert-missing-data', 'is_open'),
     ],
     inputs = [
         Input('drag-drop', 'contents')
@@ -629,8 +631,10 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
 
     alert_n_samples_title = [html.P("")]
     alert_merge_title = [html.P("")]
-    alert_merge_open = False
+    alert_missing_data_title = [html.P("")]
     alert_n_samples_open = False
+    alert_merge_open = False
+    alert_missing_data_open = False
 
     print("INSTRIMENT")
     print(instrument)
@@ -645,7 +649,7 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
 
         token_data = auth_utils.token_to_data(token)
         if token_data is None:
-            return components.no_auth, None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open
+            return components.no_auth, None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, alert_missing_data_title, alert_missing_data_open
         plate = json.loads(token_data)['entity_id_data']
 
         send = html.Div()
@@ -669,6 +673,14 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
 
         if type(None) != type(plate) and type(None) != type(fl):
             D.merged()
+
+            if hasattr(D, 'missing_wells_alert') and D.missing_wells_alert:
+                alert_missing_data_title = [
+                    html.H3("Warning: Missing Data in Samples"),
+                    html.P("The following wells are missing data and were excluded:"),
+                    html.Ul([html.Li(well) for well in D.missing_wells_alert])
+                ]
+                alert_missing_data_open = True
 
             # send = html.Div([
             df = D.merged_dataset
@@ -737,7 +749,7 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
 
         )
         
-        return div_send, D.json, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open
+        return div_send, D.json, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, alert_missing_data_title, alert_missing_data_open
 
     except Exception as e: 
 
@@ -751,7 +763,7 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
         ]
         alert_merge_open = True
 
-        return html.Div(), None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open
+        return html.Div(), None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, alert_missing_data_title, alert_missing_data_open
 
 if __name__ == '__main__':
-    app.run_server(debug=False, port=PORT, host=HOST)
+    app.run_server(debug=True, port=PORT, host=HOST)

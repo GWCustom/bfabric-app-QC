@@ -1,5 +1,4 @@
 import pandas as pd
-import bfabric
 
 
 AD = {
@@ -35,6 +34,7 @@ class QC_Dataset:
         self.instrument_type = ""
         self.TS_type = ""
         self.table_type = ""
+        self.missing_wells_alert = []
 
     @property  
     def json(self):
@@ -75,7 +75,32 @@ class QC_Dataset:
             print(bfabric_data)
         if self.table_type == "ST":
 
-            tmp_df = pd.merge(bfabric_data, csv_data, how='inner',on=['Well'])
+            tmp_df = pd.merge(bfabric_data, csv_data, how='inner', on=['Well'])
+
+            # Identify rows with missing data in specific columns (RINe or Conc)
+            missing_data_rows = tmp_df[tmp_df[['RINe', 'Conc. [pg/µl]']].isnull().any(axis=1)]
+
+            if not missing_data_rows.empty:
+                # Initialize missing wells alert
+                self.missing_wells_alert = []
+
+                # Iterate over rows with missing data
+                for _, row in missing_data_rows.iterrows():
+                    well = row['Well']
+                    missing_columns = []
+                    
+                    # Check which specific columns are missing
+                    if pd.isnull(row['RINe']):
+                        missing_columns.append("Integrity")
+                    if pd.isnull(row['Conc. [pg/µl]']):
+                        missing_columns.append("Conc")
+                    
+                    # Create alert message for the well
+                    missing_info = ", ".join(missing_columns)  # Combine missing column names
+                    self.missing_wells_alert.append(f"{well} is missing data in: {missing_info}")
+
+                # Remove rows with missing data in RINe or Conc from tmp_df
+                tmp_df = tmp_df.dropna(subset=['RINe', 'Conc. [pg/µl]'])
 
             if self.TS_type == "gDNA":
                 df = pd.DataFrame({"Well":tmp_df['Well'],
