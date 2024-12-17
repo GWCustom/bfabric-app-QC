@@ -94,6 +94,9 @@ class QC_Dataset:
                         missing_columns.append("Integrity")
                     if pd.isnull(row['Conc. [pg/µl]']):
                         missing_columns.append("Conc")
+
+                    # TODO: Change procedure for checking missing data in other columns
+                    # 1) iterate over ["RINe", "Conc. [pg/µl]", "Conc. [ng/µl]"]
                     
                     # Create alert message for the well
                     missing_info = ", ".join(missing_columns)  # Combine missing column names
@@ -283,6 +286,11 @@ class QC_Dataset:
 
         else:
             print("CANNOT PROCEED -- "+str(self.table_type))
+
+        for key in ["Conc", "Integrity", "Range", "Size", "Molarity"]:
+            if key in df.columns:
+                # TODO: deal with removing empty rows and alerting here. 
+                pass
 
         self.merged_dataset = df
 
