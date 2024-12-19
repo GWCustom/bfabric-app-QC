@@ -1,5 +1,4 @@
 import pandas as pd
-import bfabric
 
 
 AD = {
@@ -35,6 +34,7 @@ class QC_Dataset:
         self.instrument_type = ""
         self.TS_type = ""
         self.table_type = ""
+        self.missing_wells_alert = []
 
     @property  
     def json(self):
@@ -75,7 +75,7 @@ class QC_Dataset:
             print(bfabric_data)
         if self.table_type == "ST":
 
-            tmp_df = pd.merge(bfabric_data, csv_data, how='inner',on=['Well'])
+            tmp_df = pd.merge(bfabric_data, csv_data, how='inner', on=['Well'])
 
             if self.TS_type == "gDNA":
                 df = pd.DataFrame({"Well":tmp_df['Well'],
@@ -258,6 +258,32 @@ class QC_Dataset:
 
         else:
             print("CANNOT PROCEED -- "+str(self.table_type))
+
+        alert_messages = {}
+
+        relevant_columns = [col for col in ["Conc", "Integrity", "Range", "Size", "Molarity"] if col in df.columns]
+
+        for key in relevant_columns:
+            # Identify rows with missing data in the current column
+            missing_data_rows = df[df[key].isnull()]
+
+            if not missing_data_rows.empty:
+                # Iterate over rows with missing data for the current column
+                for _, row in missing_data_rows.iterrows():
+                    well = row['Well'] if 'Well' in row else "Unknown Well"
+
+                    # Append the current column to the alert message for this well
+                    if well in alert_messages:
+                        alert_messages[well].append(key)
+                    else:
+                        alert_messages[well] = [key]
+
+        # Format and sort the alert messages alphabetically
+        self.missing_wells_alert = sorted(
+            [f"{well} is missing data in: {', '.join(columns)}" for well, columns in alert_messages.items()]
+        )
+
+        df = df.dropna(subset=relevant_columns, how='any')
 
         self.merged_dataset = df
 
