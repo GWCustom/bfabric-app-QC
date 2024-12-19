@@ -77,34 +77,6 @@ class QC_Dataset:
 
             tmp_df = pd.merge(bfabric_data, csv_data, how='inner', on=['Well'])
 
-            # Identify rows with missing data in specific columns (RINe or Conc)
-            missing_data_rows = tmp_df[tmp_df[['RINe', 'Conc. [pg/µl]']].isnull().any(axis=1)]
-
-            if not missing_data_rows.empty:
-                # Initialize missing wells alert
-                self.missing_wells_alert = []
-
-                # Iterate over rows with missing data
-                for _, row in missing_data_rows.iterrows():
-                    well = row['Well']
-                    missing_columns = []
-                    
-                    # Check which specific columns are missing
-                    if pd.isnull(row['RINe']):
-                        missing_columns.append("Integrity")
-                    if pd.isnull(row['Conc. [pg/µl]']):
-                        missing_columns.append("Conc")
-
-                    # TODO: Change procedure for checking missing data in other columns
-                    # 1) iterate over ["RINe", "Conc. [pg/µl]", "Conc. [ng/µl]"]
-                    
-                    # Create alert message for the well
-                    missing_info = ", ".join(missing_columns)  # Combine missing column names
-                    self.missing_wells_alert.append(f"{well} is missing data in: {missing_info}")
-
-                # Remove rows with missing data in RINe or Conc from tmp_df
-                tmp_df = tmp_df.dropna(subset=['RINe', 'Conc. [pg/µl]'])
-
             if self.TS_type == "gDNA":
                 df = pd.DataFrame({"Well":tmp_df['Well'],
                                   "id":tmp_df['ids'],
@@ -287,10 +259,31 @@ class QC_Dataset:
         else:
             print("CANNOT PROCEED -- "+str(self.table_type))
 
-        for key in ["Conc", "Integrity", "Range", "Size", "Molarity"]:
-            if key in df.columns:
-                # TODO: deal with removing empty rows and alerting here. 
-                pass
+        alert_messages = {}
+
+        relevant_columns = [col for col in ["Conc", "Integrity", "Range", "Size", "Molarity"] if col in df.columns]
+
+        for key in relevant_columns:
+            # Identify rows with missing data in the current column
+            missing_data_rows = df[df[key].isnull()]
+
+            if not missing_data_rows.empty:
+                # Iterate over rows with missing data for the current column
+                for _, row in missing_data_rows.iterrows():
+                    well = row['Well'] if 'Well' in row else "Unknown Well"
+
+                    # Append the current column to the alert message for this well
+                    if well in alert_messages:
+                        alert_messages[well].append(key)
+                    else:
+                        alert_messages[well] = [key]
+
+        # Format and sort the alert messages alphabetically
+        self.missing_wells_alert = sorted(
+            [f"{well} is missing data in: {', '.join(columns)}" for well, columns in alert_messages.items()]
+        )
+
+        df = df.dropna(subset=relevant_columns, how='any')
 
         self.merged_dataset = df
 
