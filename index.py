@@ -9,6 +9,7 @@ from objects.QCDataset import QC_Dataset as QC
 # import bfabric
 from utils import auth_utils, components
 from utils.upload_utils import parse_contents as pc
+from utils.objects import Logger
 
 if os.path.exists("./PARAMS.py"):
     try:
@@ -90,7 +91,6 @@ app.layout = html.Div(
     ],style={"width":"100vw", "overflow-x":"hidden", "overflow-y":"scroll"}
 )
 
-
 @app.callback(
     [
         Output("alert-fade-bug", "is_open"),
@@ -102,8 +102,9 @@ app.layout = html.Div(
     [
         State("token", "data"),
         State("entity", "data"),
-        State("bug-description", "value")
-    ]
+        State("bug-description", "value"),
+    ],
+    prevent_initial_call=True
 )
 def submit_bug_report(n_clicks, token, entity_data, bug_description):
 
@@ -112,18 +113,32 @@ def submit_bug_report(n_clicks, token, entity_data, bug_description):
     else:
         token_data = ""
 
+    jobId = token_data.get('jobId', None)
+    username = token_data.get("user_data", "None")
+    environment = token_data.get("environment", "None")
+
+    L = Logger(
+        jobid=jobId,
+        username=username,
+        environment= environment)
+
     if n_clicks:
+        L.log_operation("bug report", "Initiating bug report submission process.", params=None, flush_logs=False)
         try:
             sending_result = auth_utils.send_bug_report(
                 token_data=token_data,
                 entity_data=entity_data,
-                description=bug_description
+                description=bug_description,
             )
+
             if sending_result:
+                L.log_operation("bug report", f"Bug report successfully submitted. | DESCRIPTION: {bug_description}", params=None, flush_logs=True)
                 return True, False
             else:
+                L.log_operation("bug report", "Failed to submit bug report!", params=None, flush_logs=True)
                 return False, True
         except:
+            L.log_operation("bug report", "Failed to submit bug report!", params=None, flush_logs=True)
             return False, True
 
     return False, False
@@ -145,9 +160,14 @@ def submit_bug_report(n_clicks, token, entity_data, bug_description):
         State("qc-data", "data"),
         State("token", "data"),
         State("dropdown-select-inst", "value"),
-    ]
+        State("upload-type", "value"),
+        State("qc-type", "value"),
+        State('token_data', 'data')
+        
+    ],
+    prevent_initial_call=True
 )
-def submit(n_clicks, qc_data, token, qc_type):
+def submit(n_clicks, qc_data, token, dropdown_select_inst_value, upload_type, qc_type, token_data):
 
     qc_types = {
         "Frag":"Agilent Fragment Analyzer",
@@ -181,18 +201,31 @@ def submit(n_clicks, qc_data, token, qc_type):
         "Well":"qualitycontroltype"
     }
 
-    try:
-    # if True:
-        button_clicked = ctx.triggered_id
-        if button_clicked == "submit-val":
-            if qc_data:
-                data = json.loads(qc_data)
-            else:
-                no_data_alert = [
-                    html.H3("You haven't uploaded any data."),
-                    html.P("Please upload data before submitting.")
-                ]
-                return [], False, [], False, no_data_alert, True
+    params = {
+        "instrument": dropdown_select_inst_value,
+        "data_type": qc_type,
+        "data_format": upload_type,
+        "submit_button_clicks": n_clicks,
+    }
+
+    #Initialize logger
+    jobId = token_data.get('jobId', None)
+    username = token_data.get("user_data", "None")
+    environment = token_data.get("environment", "None")
+
+    L = Logger(
+        jobid=jobId,
+        username=username,
+        environment= environment)
+
+    button_clicked = ctx.triggered_id
+    if button_clicked == "submit-val":
+        
+        L.log_operation("upload", "User clicked submit button", params=params, flush_logs=False)
+
+        # Check if data was uploaded does not work! Even if no data was uploaded, the qc_data is not None!
+        if qc_data:
+            data = json.loads(qc_data)
         
             objs = []
 
@@ -203,7 +236,7 @@ def submit(n_clicks, qc_data, token, qc_type):
                 for i in range(len(data['columns'])):
                     key = data['columns'][i]
                     if key == "Well":
-                        tmp_obj[rnaAD[key]] = qc_types[qc_type]
+                        tmp_obj[rnaAD[key]] = qc_types[dropdown_select_inst_value]
                     else: 
                         tmp_obj[rnaAD[key]] = str(elt[i])
                 # print(tmp_obj)
@@ -212,44 +245,63 @@ def submit(n_clicks, qc_data, token, qc_type):
             tdata = json.loads(auth_utils.token_to_data(token))
             wrapper = auth_utils.token_response_to_bfabric(tdata)
 
-            n_sammples_saved = 0
+            n_samples_saved = 0
 
             try: 
 
                 for elt in objs: 
-                    # res = wrapper.save_object(endpoint="sample", obj=elt)
-                    res = wrapper.save(endpoint="sample", obj=elt)
-                    print(res)
-                    n_sammples_saved += 1
 
+                    L.logthis(
+                        api_call=wrapper.save,
+                        endpoint="sample",
+                        obj=elt,
+                        params=params,
+                        flush_logs = False,
+                    )
+
+                    n_samples_saved += 1
+
+                L.flush_logs()
 
             except Exception as e:
-                print(e)
+                
                 alert_children = [
                     html.H3("Upload Failed."),
                     html.P("Please try again. If you continue to encounter issues, please submit a bug report using the bug report tab."),
                     html.P(f"Internal Traceback: {e}")
                 ]
+
+                L.log_operation("upload", f"Upload failed with exception: {e}", params=params, flush_logs=True)
+
                 return [], False, alert_children, True, [], False
 
             success_alert_children = [
                 html.H3("Upload Successful!"),
-                html.P([html.B(f"{n_sammples_saved}"), " samples were uploaded to Bfabric."])
+                html.P([html.B(f"{n_samples_saved}"), " samples were uploaded to Bfabric."])
             ]
-            return success_alert_children, True, [], False, [], False
-        else: 
-            return [], False, [], False, [], False
 
-    except Exception as e: 
-    # else:
-        print(e)
+            L.log_operation("Upload Successful!", "samples were uploaded to Bfabric", params=params, flush_logs=True)
+            return success_alert_children, True, [], False, [], False
+   
+        else:
+            no_data_alert = [
+                html.H3("You haven't uploaded any data."),
+                html.P("Please upload data before submitting.")
+            ]
+
+            L.log_operation("Error", "No data was uploaded before the submission", params=params, flush_logs=True)
+
+            return [], False, [], False, no_data_alert, True
+        
+    else:
         alert_children = [
-            html.H3("Upload Failed."),
-            html.P("Please try again. If you continue to encounter issues, please submit a bug report using the bug report tab."),
-            html.P(f"Internal Traceback: {e}")
+            html.H3("Unexpected Error."),
+            html.P("Please try again. If you continue to encounter issues, please submit a bug report using the bug report tab.")
         ]
-        return [], False, alert_children, True
-            
+
+        L.log_operation("upload", f"Upload failed with exception: {e}", params=params, flush_logs=True) 
+        return [], False, alert_children, True, [], False    
+         
 
 @app.callback(
     Output("modal", "is_open"),
@@ -276,9 +328,14 @@ def toggle_modal(n1, n2, is_open):
     ],
     [
         Input('url', 'search'),
+    ],
+    [
+        State("dropdown-select-inst", "value"),
+        State("upload-type", "value"),
+        State("qc-type", "value"),
     ]
 )
-def display_page(url_params):
+def display_page(url_params, dropdown_select_inst_value, qc_type, upload_type):
     
     base_title = ""
 
@@ -298,7 +355,15 @@ def display_page(url_params):
         return None, None, None, components.no_auth, base_title, True, True, True, [], False
     
     if tdata:
-        entity_data = json.loads(auth_utils.entity_data(tdata))
+
+        params = {
+            "instrument": dropdown_select_inst_value,
+            "data_type": qc_type,
+            "data_format": upload_type,
+        }
+
+        entity_data_json = auth_utils.entity_data(tdata, params)
+        entity_data = json.loads(entity_data_json)
         page_title = f"{base_title}{tdata['entityClass_data']} {tdata['entity_id_data']}: {entity_data['name']}" if tdata else "Bfabric App Interface"
 
         if entity_data['type'] != "Quality Control":
@@ -606,37 +671,44 @@ def generate_qc_dropdown(obj):
 
 @app.callback(
     output=[
-        # Output('div-graphs-qc','children'),
-        Output('auth-div','children'),
-        Output('qc-data','data'),
-        Output('alert-n-samples','children'),
-        Output('alert-n-samples','is_open'),
-        Output('alert-merge-error','children'),
-        Output('alert-merge-error','is_open'),
+        Output('auth-div', 'children'),
+        Output('qc-data', 'data'),
+        Output('alert-n-samples', 'children'),
+        Output('alert-n-samples', 'is_open'),
+        Output('alert-merge-error', 'children'),
+        Output('alert-merge-error', 'is_open'),
+        Output('alert-merge-success', 'children'),
+        Output('alert-merge-success', 'is_open'),
         Output('alert-missing-data', 'children'),
         Output('alert-missing-data', 'is_open'),
     ],
-    inputs = [
+    inputs=[
         Input('drag-drop', 'contents')
     ],
     state=[
-        State('dropdown-select-inst','value'),
-        State('token','data'),
-        State('qc-type','value'),
-        State('upload-type','value'),
-        State('entity','data')
-    ]
+        State('dropdown-select-inst', 'value'),
+        State('token', 'data'),
+        State('qc-type', 'value'),
+        State('upload-type', 'value'),
+        State('entity', 'data')
+    ],
 )
 def generate_graph(fl, instrument, token, qcType, uploadType, entity_data): 
 
     alert_n_samples_title = [html.P("")]
     alert_merge_title = [html.P("")]
+    merge_success_title = [html.P("")]
+    alert_merge_open = False
+
     alert_missing_data_title = [html.P("")]
+
     alert_n_samples_open = False
     alert_merge_open = False
     alert_missing_data_open = False
 
-    print("INSTRIMENT")
+    merge_success_open = False
+
+    print("INSTRUMENT")
     print(instrument)
 
     print("QC TYPE")
@@ -646,12 +718,21 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
     print(uploadType)
 
     try:
-
+        # Validate token
         token_data = auth_utils.token_to_data(token)
-        if token_data is None:
-            return components.no_auth, None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, alert_missing_data_title, alert_missing_data_open
+        
+        if not token_data:
+            return components.no_auth, None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, merge_success_title, merge_success_open, alert_missing_data_title, alert_missing_data_open
+            
         plate = json.loads(token_data)['entity_id_data']
 
+        L = Logger(
+            jobid=json.loads(token_data)['jobId'],
+            username=json.loads(token_data)['user_data'],
+            environment=json.loads(token_data)['environment']
+        )
+
+        plate = json.loads(token_data)['entity_id_data']
         send = html.Div()
         title = ""
 
@@ -660,19 +741,21 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
         D.table_type = uploadType
         if instrument != "Frag":
             D.TS_type = qcType
-        elif qcType is None: 
+        elif qcType is None:
             pass
         else:
-            D.TS_type = "FRAG_"+qcType
+            D.TS_type = "FRAG_" + qcType
 
-        if type(None) != type(fl):
+        # Handle uploaded files
+        if fl:
             D.upload_dataset = pc(fl)
 
-        if type(None) != type(plate):
+        if plate:
             D.plate_number = plate
 
-        if type(None) != type(plate) and type(None) != type(fl):
+        if plate and fl:
             D.merged()
+
 
             if hasattr(D, 'missing_wells_alert') and D.missing_wells_alert:
                 alert_missing_data_title = [
@@ -682,29 +765,28 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
                 ]
                 alert_missing_data_open = True
 
-            # send = html.Div([
             df = D.merged_dataset
             send = dash_table.DataTable(
-                    df.to_dict("records"),
-                    [{"name": i, "id": i} for i in df.columns],
-                    style_data_conditional=[
-                        {
-                            'if': {'row_index': 'odd'},
-                            'backgroundColor': 'rgb(220, 220, 220)',
-                        }
-                    ],
-                    style_cell={'padding':'10px'},
-                    style_data={
-                        'color': 'black',
-                        'backgroundColor': 'white'
-                    },
-                    style_header={
-                        'backgroundColor': 'rgb(210, 210, 210)',
-                        'color': 'black',
-                        'fontWeight': 'bold'
+                df.to_dict("records"),
+                [{"name": i, "id": i} for i in df.columns],
+                style_data_conditional=[
+                    {
+                        'if': {'row_index': 'odd'},
+                        'backgroundColor': 'rgb(220, 220, 220)',
                     }
-                )
-            
+                ],
+                style_cell={'padding': '10px'},
+                style_data={
+                    'color': 'black',
+                    'backgroundColor': 'white'
+                },
+                style_header={
+                    'backgroundColor': 'rgb(210, 210, 210)',
+                    'color': 'black',
+                    'fontWeight': 'bold'
+                }
+            )
+
             if len(D.bfabric_dataset) != len(D.upload_dataset):
                 alert_n_samples_title = [
                     html.H3("Warning: N Samples in your file ≠ N Samples on the bfabric plate."),
@@ -712,46 +794,53 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
                     html.P([f"Number of samples in the file you uploaded: ", html.B(f"{len(D.upload_dataset)}")]),
                     html.P([f"Number of samples assigned to the plate in Bfabric: ", html.B(f"{len(D.bfabric_dataset)}")])
                 ]
+                L.log_operation("warning", "Sample mismatch detected during merge", params=None, flush_logs=True)
                 alert_n_samples_open = True
             title = "Merged Data"
+            merge_success_open = True
+            merge_success_title = [
+                html.H3("Data Merged Successfully"),
+                html.P("The data has been merged with the plate information in Bfabric without any detected errors.")
+            ]
+            L.log_operation("Merge success", "The data file was successfully merged with the Bfabric plate data.", params=None, flush_logs=True)
 
         elif type(None) != type(plate) and type(None) == type(fl):
             df = D.bfabric_dataset
             send = dash_table.DataTable(
-                    df.to_dict("records"),
-                    [{"name": i, "id": i} for i in df.columns],
-                    style_data_conditional=[
-                        {
-                            'if': {'row_index': 'odd'},
-                            'backgroundColor': 'rgb(220, 220, 220)',
-                        }
-                    ],
-                    style_cell={'padding':'10px'},
-                    style_data={
-                        'color': 'black',
-                        'backgroundColor': 'white'
-                    },
-                    style_header={
-                        'backgroundColor': 'rgb(210, 210, 210)',
-                        'color': 'black',
-                        'fontWeight': 'bold'
+                df.to_dict("records"),
+                [{"name": i, "id": i} for i in df.columns],
+                style_data_conditional=[
+                    {
+                        'if': {'row_index': 'odd'},
+                        'backgroundColor': 'rgb(220, 220, 220)',
                     }
-                )
+                ],
+                style_cell={'padding': '10px'},
+                style_data={
+                    'color': 'black',
+                    'backgroundColor': 'white'
+                },
+                style_header={
+                    'backgroundColor': 'rgb(210, 210, 210)',
+                    'color': 'black',
+                    'fontWeight': 'bold'
+                }
+            )
             title = "Bfabric Data"
-            
+
         div_send = html.Div(
             children=[
                 html.H3(title),
                 html.Br(),
                 send
             ],
-            style={"margin-left":"2vw", "margin-right":"10vw", "font-size":"20px"}
+            style={"margin-left": "2vw", "margin-right": "10vw", "font-size": "20px"}
 
         )
-        
-        return div_send, D.json, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, alert_missing_data_title, alert_missing_data_open
 
-    except Exception as e: 
+        return div_send, D.json, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, merge_success_title, merge_success_open, alert_missing_data_title, alert_missing_data_open
+
+    except Exception as e:
 
         print("ERROR")
         print(e)
@@ -762,8 +851,12 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
             html.P(f"Internal Traceback: {e}")
         ]
         alert_merge_open = True
+        # Log merge failure
+        L.log_operation("merge","There was an error merging your file with the plate data in Bfabric. " + f"Merge failed with exception: {e}", params=None, flush_logs=True)
 
-        return html.Div(), None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, alert_missing_data_title, alert_missing_data_open
+        return html.Div(), None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, merge_success_title, merge_success_open, alert_missing_data_title, alert_missing_data_open
+
 
 if __name__ == '__main__':
-    app.run_server(debug=True, port=PORT, host=HOST)
+    app.run_server(debug=False, port=PORT, host=HOST)
+
