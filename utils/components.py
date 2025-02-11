@@ -362,4 +362,12 @@ alerts = [
         color="warning",
         style={"max-width":"80vw", "margin":"10px"}
     ),
+        dbc.Alert(
+        children=[],
+        id="alert-missing-data",
+        dismissable=True,
+        is_open=False,
+        color="warning",
+        style={"max-width":"80vw", "margin":"10px"}
+    ),
 ]

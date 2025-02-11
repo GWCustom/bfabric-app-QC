@@ -679,6 +679,8 @@ def generate_qc_dropdown(obj):
         Output('alert-merge-error', 'is_open'),
         Output('alert-merge-success', 'children'),
         Output('alert-merge-success', 'is_open'),
+        Output('alert-missing-data', 'children'),
+        Output('alert-missing-data', 'is_open'),
     ],
     inputs=[
         Input('drag-drop', 'contents')
@@ -697,7 +699,12 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
     alert_merge_title = [html.P("")]
     merge_success_title = [html.P("")]
     alert_merge_open = False
+
+    alert_missing_data_title = [html.P("")]
+
     alert_n_samples_open = False
+    alert_merge_open = False
+    alert_missing_data_open = False
 
     merge_success_open = False
 
@@ -713,10 +720,12 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
     try:
         # Validate token
         token_data = auth_utils.token_to_data(token)
-
+        
         if not token_data:
-            return components.no_auth, None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, merge_success_title, merge_success_open
+            return components.no_auth, None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, merge_success_title, merge_success_open, alert_missing_data_title, alert_missing_data_open
             
+        plate = json.loads(token_data)['entity_id_data']
+
         L = Logger(
             jobid=json.loads(token_data)['jobId'],
             username=json.loads(token_data)['user_data'],
@@ -746,6 +755,15 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
 
         if plate and fl:
             D.merged()
+
+
+            if hasattr(D, 'missing_wells_alert') and D.missing_wells_alert:
+                alert_missing_data_title = [
+                    html.H3("Warning: Missing Data in Samples"),
+                    html.P("The following wells are missing data and were excluded:"),
+                    html.Ul([html.Li(well) for well in D.missing_wells_alert])
+                ]
+                alert_missing_data_open = True
 
             df = D.merged_dataset
             send = dash_table.DataTable(
@@ -820,7 +838,7 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
 
         )
 
-        return div_send, D.json, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, merge_success_title, merge_success_open
+        return div_send, D.json, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, merge_success_title, merge_success_open, alert_missing_data_title, alert_missing_data_open
 
     except Exception as e:
 
@@ -833,12 +851,12 @@ def generate_graph(fl, instrument, token, qcType, uploadType, entity_data):
             html.P(f"Internal Traceback: {e}")
         ]
         alert_merge_open = True
-
         # Log merge failure
         L.log_operation("merge","There was an error merging your file with the plate data in Bfabric. " + f"Merge failed with exception: {e}", params=None, flush_logs=True)
 
-        return html.Div(), None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, merge_success_title, merge_success_open
+        return html.Div(), None, alert_n_samples_title, alert_n_samples_open, alert_merge_title, alert_merge_open, merge_success_title, merge_success_open, alert_missing_data_title, alert_missing_data_open
 
 
 if __name__ == '__main__':
     app.run_server(debug=False, port=PORT, host=HOST)
+
